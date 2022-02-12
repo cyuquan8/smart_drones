@@ -9,6 +9,7 @@ import torch as T
 import torch.nn as nn
 import torch_geometric.nn as gnn
 from functools import partial
+from utils.popart import popart
 
 def activation_function(activation):
     
@@ -321,7 +322,7 @@ class maddpg_actor_model(nn.Module):
         """ function for forward pass through actor model """
             
         # actor_gmt_layer --> actor_fc_layers
-        x = self.actor_fc_layers(x = x)
+        x = self.actor_fc_layers(x)
 
         # actor_fc_layers --> tanh_actions_layer
         tanh_actions = self.tanh_actions_layer(x)
@@ -356,8 +357,7 @@ class maddpg_critic_model(nn.Module):
         if mode != 'test' and mode != 'load_n_train':
 
             try:
-                
-                # create directory for saving models if it does not exist
+                                # create directory for saving models if it does not exist
                 os.mkdir("saved_models/" + training_name + "_" + "best_models/")
                 
             except:
@@ -391,7 +391,7 @@ class maddpg_critic_model(nn.Module):
         # gmt_hidden_dims are the dimensions of the node embeddings post 1 initial linear layer in gmt 
         # gmt_output_dims are the dimensions of the sole remaining node embedding that represents the entire graph
         # uses GATv2Conv as Conv block for GMPool_G
-        # remaining inputs are defaults
+        # remaining inputs are defaults 
         self.critic_state_gmt_layer = gnn.GraphMultisetTransformer(in_channels = gnn_output_dims[-1] * num_heads if bool_concat == True else gnn_output_dims[-1], hidden_channels = gmt_hidden_dims, 
                                                                    out_channels = gmt_output_dims , Conv = gnn.GATv2Conv, num_nodes = 300, pooling_ratio = 0.25, 
                                                                    pool_sequences = ['GMPool_G', 'SelfAtt', 'GMPool_I'], num_heads = 4, layer_norm = False)
@@ -432,10 +432,10 @@ class maddpg_critic_model(nn.Module):
         
         # obtain node embeddings and edge index from data
         x, edge_index = data.x, data.edge_index
-
+       
         # x (graph of critic's state representation) --> critic_state_gatv2_layer
         x = self.critic_state_gatv2_layer(x = x, edge_index = edge_index)
-
+        
         # critic_state_gatv2_layer --> critic_state_gmt_layer
         x = self.critic_state_gmt_layer(x = x, edge_index = edge_index, batch = batch)
 
@@ -455,3 +455,211 @@ class maddpg_critic_model(nn.Module):
         q = self.q_layer(conc)
         
         return q
+
+class mappo_actor_model(nn.Module):
+    
+    """ class to build model for MAPPO """
+    
+    def __init__(self, model, model_name, mode, training_name, learning_rate, num_agents, num_opp, u_range, u_noise, c_noise, is_adversary, dropout_p, fc_input_dims, fc_output_dims, 
+                 tanh_actions_dims, sig_actions_dims):
+        
+        """ class constructor for attributes for the actor model """
+        
+        # inherit class constructor attributes from nn.Module
+        super().__init__()
+        
+        # model
+        self.model = model
+        
+        # model name
+        self.model_name = model_name
+        
+        # checkpoint filepath 
+        self.checkpoint_path = None
+        
+        # if training model
+        if mode != 'test' and mode != 'load_n_train':
+
+            try:
+                
+                # create directory for saving models if it does not exist
+                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                
+            except:
+                
+                # remove existing directory and create new directory
+                shutil.rmtree("saved_models/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+
+        # checkpoint directory
+        self.checkpoint_dir = "saved_models/" + training_name + "_" + "best_models/"
+        
+        # learning rate
+        self.learning_rate = learning_rate
+        
+        # number of agents
+        self.num_agents = num_agents
+
+        # number of adverserial opponents
+        self.num_opp = num_opp
+
+        # range of motor actions
+        self.u_range = u_range
+
+        # motor and communication noise
+        self.u_noise = u_noise
+        self.c_noise = c_noise
+
+        # boolean that states if model is for adversarial drones or not
+        self.is_adversary = is_adversary
+
+        # model architecture for mappo actor
+
+        # hidden fc layers post gatv2 layers
+        # input channels are the dimensions of observation from agent
+        # fc_output_dims is the list of sizes of output channels fc_block
+        self.actor_fc_layers = nn_layers(input_channels = fc_input_dims, block = fc_block, output_channels = fc_output_dims, activation_func = 'relu', dropout_p = dropout_p)
+
+        # final fc_blocks for actions with tanh activation function
+        self.tanh_actions_layer = fc_block(input_shape = fc_output_dims[-1], output_shape = tanh_actions_dims, activation_func = "tanh", dropout_p = dropout_p)
+
+        # final fc_blocks for actions with sigmoid activation function
+        self.sig_actions_layer = fc_block(input_shape = fc_output_dims[-1], output_shape = sig_actions_dims, activation_func = "sigmoid", dropout_p = dropout_p)
+             
+        # adam optimizer 
+        self.optimizer = T.optim.Adam(self.parameters(), lr = self.learning_rate)
+        
+        # device for training (cpu/gpu)
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        
+        # cast module to device
+        self.to(self.device)
+    
+    def forward(self, x):
+            
+        """ function for forward pass through actor model """
+            
+        # actor_gmt_layer --> actor_fc_layers
+        x = self.actor_fc_layers(x)
+
+        # actor_fc_layers --> tanh_actions_layer
+        tanh_actions = self.tanh_actions_layer(x)
+
+        # actor_fc_layers --> sig_actions_layer
+        sig_actions = self.sig_actions_layer(x)
+        
+        # obtain normal distribution of tanh_actions
+        tanh_actions_norm_dist = T.distributions.normal.Normal(T.mul(tanh_actions, self.u_range), self.u_noise)
+
+        # adversarial
+        if self.is_adversary == True:
+
+            sig_actions_norm_dist = T.distributions.normal.Normal(T.mul(sig_actions, self.num_agents), self.c_noise)
+
+        else:
+
+            sig_actions_norm_dist = T.distributions.normal.Normal(T.mul(sig_actions, self.num_opp), self.c_noise)
+
+        return tanh_actions_norm_dist, sig_actions_norm_dist 
+
+class mappo_critic_model(nn.Module):
+    
+    """ class to build model for MAPPO """
+    
+    def __init__(self, model, model_name, mode, training_name, learning_rate, num_agents, num_opp, num_heads, dropout_p, bool_concat, gnn_input_dims, gnn_output_dims, gmt_hidden_dims, 
+                 gmt_output_dims, fc_output_dims):
+        
+        """ class constructor for attributes for the model """
+        
+        # inherit class constructor attributes from nn.Module
+        super().__init__()
+        
+        # model
+        self.model = model
+        
+        # model name
+        self.model_name = model_name
+        
+        # checkpoint filepath 
+        self.checkpoint_path = None
+        
+        # if training model
+        if mode != 'test' and mode != 'load_n_train':
+
+            try:
+                                # create directory for saving models if it does not exist
+                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                
+            except:
+                
+                # remove existing directory and create new directory
+                shutil.rmtree("saved_models/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+
+        # checkpoint directory
+        self.checkpoint_dir = "saved_models/" + training_name + "_" + "best_models/"
+        
+        # learning rate
+        self.learning_rate = learning_rate
+        
+        # number of agents
+        self.num_agents = num_agents
+
+        # number of adverserial opponents
+        self.num_opp = num_opp
+            
+        # model architecture for mappo critic
+            
+        # gatv2 layers for state inputs 
+        # gnn_input_dims are the dimensions of the initial node embeddings 
+        # gnn_output_dims are the list of dimensions of the the output embeddings of each layer of gatv2 
+        self.critic_state_gatv2_layer = nn_layers(input_channels = gnn_input_dims, block = gatv2_block, output_channels = gnn_output_dims, num_heads = num_heads, concat = bool_concat, 
+                                                  activation_func = 'relu', dropout_p = dropout_p)
+        
+        # graph multiset transformer (gmt) for state inputs
+        # in_channels are the dimensions of node embeddings after gatv2 layers
+        # gmt_hidden_dims are the dimensions of the node embeddings post 1 initial linear layer in gmt 
+        # gmt_output_dims are the dimensions of the sole remaining node embedding that represents the entire graph
+        # uses GATv2Conv as Conv block for GMPool_G
+        # remaining inputs are defaults 
+        self.critic_state_gmt_layer = gnn.GraphMultisetTransformer(in_channels = gnn_output_dims[-1] * num_heads if bool_concat == True else gnn_output_dims[-1], hidden_channels = gmt_hidden_dims, 
+                                                                   out_channels = gmt_output_dims , Conv = gnn.GATv2Conv, num_nodes = 300, pooling_ratio = 0.25, 
+                                                                   pool_sequences = ['GMPool_G', 'SelfAtt', 'GMPool_I'], num_heads = 4, layer_norm = False)
+
+        # hidden fc layers post gmt layer
+        # input channels are the dimensions of node embeddings of the one node from gmt
+        # fc_output_dims is the list of sizes of output channels fc_block
+        self.critic_fc_layers = nn_layers(input_channels = gmt_output_dims, block = fc_block, output_channels = fc_output_dims, activation_func = 'relu', dropout_p = dropout_p)
+
+        # final layer using popart for value normalisation
+        self.popart = popart(input_shape = fc_output_dims[-1], output_shape = 1)
+            
+        # adam optimizer 
+        self.optimizer = T.optim.Adam(self.parameters(), lr = self.learning_rate)
+        
+        # device for training (cpu/gpu)
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+
+        # cast module to device
+        self.to(self.device)
+    
+    def forward(self, data, batch):
+            
+        """ function for forward pass through critic model """
+        
+        # obtain node embeddings and edge index from data
+        x, edge_index = data.x, data.edge_index
+       
+        # x (graph of critic's state representation) --> critic_state_gatv2_layer
+        x = self.critic_state_gatv2_layer(x = x, edge_index = edge_index)
+        
+        # critic_state_gatv2_layer --> critic_state_gmt_layer
+        x = self.critic_state_gmt_layer(x = x, edge_index = edge_index, batch = batch)
+
+        # critic_gmt_layer --> critic_fc_layers
+        x = self.critic_fc_layers(x = x)
+
+        # critic_fc_layers --> v value
+        v = self.popart(x)
+        
+        return v

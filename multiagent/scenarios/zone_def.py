@@ -7,7 +7,7 @@ import time
 import numpy as np
 from multiagent.core import World, Agent, Landmark
 from multiagent.scenario import BaseScenario
-from utils import random_cartesian_from_polar, within_drone_radius
+from utils.utils import random_cartesian_from_polar, within_drone_radius
 
 # wrapper class around agent class for additional attributes of drones
 class DroneAgent(Agent):
@@ -82,7 +82,7 @@ class Scenario(BaseScenario):
 			agent.u_noise = agent_u_noise[1] if agent.adversary else agent_u_noise[0]
 			agent.c_noise = agent_c_noise[1] if agent.adversary else agent_c_noise[0]
 			agent.u_range = agent_u_range[1] if agent.adversary else agent_u_range[0]
-
+			
 		# add landmarks
 
 		# generate landmarks instances in list
@@ -229,7 +229,7 @@ class Scenario(BaseScenario):
 
 	def good_agents(self, world):
 
-		""" fucntion that returns all agents that are not adversaries """
+		""" function that returns all agents that are not adversaries """
 
 		return [agent for agent in world.agents if not agent.adversary]
 
@@ -267,9 +267,10 @@ class Scenario(BaseScenario):
 			# check if adversarial drone entered the restricted zone
 			if radius <= self.r_rad:
 
-				# big penalty to good agent if adversarial drone entered the restricted zone
-				rew -= self.big_rew_cnst
+				# big penalty to good agent if adversarial drone entered the restricted zone weighted based on time of occurence
+				rew -= self.big_rew_cnst * ((float(self.ep_time_limit) - (time.time() - world.ep_start_time)) / float(self.ep_time_limit) + 0.5)
 
+			# reward staying close to r_rad
 			rew -= self.rew_multiplier_cnst * (1 - radius)
 
 		def bound(x):
@@ -298,6 +299,8 @@ class Scenario(BaseScenario):
 			# penalty for leaivng screen
 			rew -= bound(x)
 
+		# reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True and vice-versa
+
 		# check if agent exceeds screen boundary
 		if np.sqrt(np.sum(np.square(agent.state.p_pos))) > 1:
 
@@ -325,9 +328,10 @@ class Scenario(BaseScenario):
 			# check if adversarial drone entered the restricted zone
 			if radius <= self.r_rad:
 
-				# big penalty to good agent if adversarial drone entered the restricted zone
-				rew += self.big_rew_cnst
+				# big penalty to good agent if adversarial drone entered the restricted zone weighted based on time of occurence
+				rew += self.big_rew_cnst * ((float(self.ep_time_limit) - (time.time() - world.ep_start_time)) / float(self.ep_time_limit) + 0.5)
 
+			# reward coming close to r_rad
 			rew += self.rew_multiplier_cnst * (1 - radius)
 
 		def bound(x):
@@ -356,6 +360,8 @@ class Scenario(BaseScenario):
 			# penalty for leaivng screen
 			rew -= bound(x)
 
+		# reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True and vice-versa
+
 		# check if agent exceeds screen boundary
 		if np.sqrt(np.sum(np.square(agent.state.p_pos))) > 1:
 
@@ -381,6 +387,8 @@ class Scenario(BaseScenario):
 		if np.sqrt(np.sum(np.square(agent.state.p_pos))) < self.r_rad and agent.adversary == True:
 
 			return [True, 2]
+
+		# terminal condition for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True and vice-versa
 
 		# check if agent drone have exceeded screen boundary 
 		if np.sqrt(np.sum(np.square(agent.state.p_pos))) > 1 and agent.adversary == False:

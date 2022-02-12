@@ -15,23 +15,23 @@ agent_model 												= "maddpg"
 adver_model 												= "maddpg"
 agent_mode 													= "train"
 adver_mode 													= "train"
-training_name 												= "agent_" + agent_model + "_" + agent_mode + "_vs_opp_"  + adver_model + "_" + adver_mode + "_1"
+general_training_name 										= "agent_" + AGENT_MODEL + "_vs_opp_"  + ADVER_MODEL + "_1"
 csv_log_directory											= "csv_log"
 
-def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
+def post_process(csv_log_directory, general_training_name, agent_mode, adver_mode):
 
 	# extract csv files into pandas dataframes
-	metrics = pd.read_csv(csv_log_directory + '/' + TRAINING_NAME + "_logs.csv", header = 0)
+	metrics = pd.read_csv(csv_log_directory + '/' + general_training_name + "_logs.csv", header = 0)
 	
 	# make directory for plots, if is already exists, override it
 	try:
 
-		os.mkdir("training_plots/" + training_name)
+		os.mkdir("training_plots/" + general_training_name)
 
 	except:
 
-		shutil.rmtree("training_plots/" + training_name)
-		os.mkdir("training_plots/" + training_name)
+		shutil.rmtree("training_plots/" + general_training_name)
+		os.mkdir("training_plots/" + general_training_name)
 
 	# frequency of success plot
 	plt.title("Frequency of Success")
@@ -39,7 +39,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 	plot_1 = plt.bar(x = np.arange(len(data)), height = data, tick_label = ['agent', 'adversary'])
 	plt.ylabel("Frequency")
 	plt.xlabel("Drone type")
-	plt.savefig("training_plots/" + training_name + "/" + training_name + "_freq_success.pdf", 
+	plt.savefig("training_plots/" + general_training_name + "/" + general_training_name + "_freq_success.pdf", 
 				bbox_inches = 'tight')
 	plt.close()
 
@@ -49,7 +49,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 	plot_2 = plt.bar(x = np.arange(len(data)), height = data, tick_label = ['agent', 'adversary'])
 	plt.ylabel("Frequency")
 	plt.xlabel("Drone type")
-	plt.savefig("training_plots/" + training_name + "/" + training_name + "_freq_exceed_screen.pdf", 
+	plt.savefig("training_plots/" + general_training_name + "/" + general_training_name + "_freq_exceed_screen.pdf", 
 				bbox_inches = 'tight')
 	plt.close()
 
@@ -58,7 +58,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 	plot_3 = sns.lineplot(data = np.array(metrics['sum_agent_number_of_team_collisions']))
 	plt.ylabel("Collisions")
 	plt.xlabel("Number of episodes")
-	plt.savefig("training_plots/" + training_name  + "/" + training_name + "sum_agent_team_collisions_vs_episodes.pdf", 
+	plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "sum_agent_team_collisions_vs_episodes.pdf", 
 				bbox_inches = 'tight')
 	plt.close()
 
@@ -67,7 +67,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 	plot_4 = sns.lineplot(data = np.array(metrics['sum_agent_number_of_oppo_collisions']))
 	plt.ylabel("Collisions")
 	plt.xlabel("Number of episodes")
-	plt.savefig("training_plots/" + training_name  + "/" + training_name + "sum_agent_oppo_collisions_vs_episodes.pdf", 
+	plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "sum_agent_oppo_collisions_vs_episodes.pdf", 
 				bbox_inches = 'tight')
 	plt.close()
 
@@ -76,7 +76,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 	plot_5 = sns.lineplot(data = np.array(metrics['sum_adver_number_of_team_collisions']))
 	plt.ylabel("Collisions")
 	plt.xlabel("Number of episodes")
-	plt.savefig("training_plots/" + training_name  + "/" + training_name + "sum_adver_team_collisions_vs_episodes.pdf", 
+	plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "sum_adver_team_collisions_vs_episodes.pdf", 
 				bbox_inches = 'tight')
 	plt.close()
 
@@ -85,7 +85,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 	plot_6 = sns.lineplot(data = np.array(metrics['sum_adver_number_of_oppo_collisions']))
 	plt.ylabel("Collisions")
 	plt.xlabel("Number of episodes")
-	plt.savefig("training_plots/" + training_name  + "/" + training_name + "sum_adver_oppo_collisions_vs_episodes.pdf", 
+	plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "sum_adver_oppo_collisions_vs_episodes.pdf", 
 				bbox_inches = 'tight')
 	plt.close()
 
@@ -94,7 +94,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 	plot_7 = sns.lineplot(data = np.array(metrics['avg_agent_number_of_team_collisions']))
 	plt.ylabel("Collisions")
 	plt.xlabel("Number of episodes")
-	plt.savefig("training_plots/" + training_name  + "/" + training_name + "avg_agent_team_collisions_vs_episodes.pdf", 
+	plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "avg_agent_team_collisions_vs_episodes.pdf", 
 				bbox_inches = 'tight')
 	plt.close()
 
@@ -103,7 +103,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 	plot_8 = sns.lineplot(data = np.array(metrics['avg_agent_number_of_oppo_collisions']))
 	plt.ylabel("Collisions")
 	plt.xlabel("Number of episodes")
-	plt.savefig("training_plots/" + training_name  + "/" + training_name + "avg_agent_oppo_collisions_vs_episodes.pdf", 
+	plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "avg_agent_oppo_collisions_vs_episodes.pdf", 
 				bbox_inches = 'tight')
 	plt.close()
 
@@ -112,7 +112,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 	plot_9 = sns.lineplot(data = np.array(metrics['avg_adver_number_of_team_collisions']))
 	plt.ylabel("Collisions")
 	plt.xlabel("Number of episodes")
-	plt.savefig("training_plots/" + training_name  + "/" + training_name + "avg_adver_team_collisions_vs_episodes.pdf", 
+	plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "avg_adver_team_collisions_vs_episodes.pdf", 
 				bbox_inches = 'tight')
 	plt.close()
 
@@ -121,7 +121,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 	plot_10 = sns.lineplot(data = np.array(metrics['avg_adver_number_of_oppo_collisions']))
 	plt.ylabel("Collisions")
 	plt.xlabel("Number of episodes")
-	plt.savefig("training_plots/" + training_name  + "/" + training_name + "avg_adver_oppo_collisions_vs_episodes.pdf", 
+	plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "avg_adver_oppo_collisions_vs_episodes.pdf", 
 				bbox_inches = 'tight')
 	plt.close()
 
@@ -133,7 +133,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 		plot_11 = sns.lineplot(data = np.array(metrics['avg_agent_actor_loss']))
 		plt.ylabel("Loss")
 		plt.xlabel("Number of episodes")
-		plt.savefig("training_plots/" + training_name  + "/" + training_name + "avg_agent_actor_loss_vs_episodes.pdf", 
+		plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "avg_agent_actor_loss_vs_episodes.pdf", 
 					bbox_inches = 'tight')
 		plt.close()
 
@@ -142,7 +142,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 		plot_12 = sns.lineplot(data = np.array(metrics['avg_agent_critic_loss']))
 		plt.ylabel("Loss")
 		plt.xlabel("Number of episodes")
-		plt.savefig("training_plots/" + training_name  + "/" + training_name + "avg_agent_critic_loss_vs_episodes.pdf", 
+		plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "avg_agent_critic_loss_vs_episodes.pdf", 
 					bbox_inches = 'tight')
 		plt.close()
 
@@ -154,7 +154,7 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 		plot_11 = sns.lineplot(data = np.array(metrics['avg_adver_actor_loss']))
 		plt.ylabel("Loss")
 		plt.xlabel("Number of episodes")
-		plt.savefig("training_plots/" + training_name  + "/" + training_name + "avg_adver_actor_loss_vs_episodes.pdf", 
+		plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "avg_adver_actor_loss_vs_episodes.pdf", 
 					bbox_inches = 'tight')
 		plt.close()
 
@@ -163,11 +163,11 @@ def post_process(csv_log_directory, training_name, agent_mode, adver_mode):
 		plot_12 = sns.lineplot(data = np.array(metrics['avg_adver_critic_loss']))
 		plt.ylabel("Loss")
 		plt.xlabel("Number of episodes")
-		plt.savefig("training_plots/" + training_name  + "/" + training_name + "avg_adver_critic_loss_vs_episodes.pdf", 
+		plt.savefig("training_plots/" + general_training_name  + "/" + general_training_name + "avg_adver_critic_loss_vs_episodes.pdf", 
 					bbox_inches = 'tight')
 		plt.close()
 
 if __name__ == "__main__":
 
 	# conduct the post processing for the case when this script is called manually
-	post_process(csv_log_directory, training_name, agent_mode, adver_mode)
+	post_process(csv_log_directory, general_training_name, agent_mode, adver_mode)
