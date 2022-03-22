@@ -6,6 +6,7 @@
 import math
 import time
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 
 def degree_to_radians(angle_in_degrees):
 
@@ -61,7 +62,7 @@ def make_env(scenario_name, dim_c, num_good_agents, num_adversaries, num_landmar
         .n                  :   Returns the number of Agents
     '''
     
-    from multiagent.environment import MultiAgentEnv
+    from multiagent.environment import MultiAgentGoalEnv
     import multiagent.scenarios as scenarios
 
     # load scenario from script
@@ -77,13 +78,13 @@ def make_env(scenario_name, dim_c, num_good_agents, num_adversaries, num_landmar
     # create multiagent environment
     if benchmark:  
 
-        env = MultiAgentEnv(world = world, reset_callback = scenario.reset_world, reward_callback = scenario.reward, observation_callback = scenario.observation, 
-                            info_callback = scenario.benchmark_data, done_callback = scenario.is_terminal)
+        env = MultiAgentGoalEnv(world = world, reset_callback = scenario.reset_world, reward_callback = scenario.reward_goal, observation_callback = scenario.observation, 
+                                info_callback = scenario.benchmark_data, done_callback = scenario.is_terminal_goal)
 
     else:
 
-        env = MultiAgentEnv(world = world, reset_callback = scenario.reset_world, reward_callback = scenario.reward, observation_callback = scenario.observation, 
-                            done_callback = scenario.is_terminal)
+        env = MultiAgentGoalEnv(world = world, reset_callback = scenario.reset_world, reward_callback = scenario.reward_goal, observation_callback = scenario.observation, 
+                                done_callback = scenario.is_terminal_goal)
 
     return env
 
@@ -125,3 +126,166 @@ def update_noise_exponential_decay(env, expo_decay_cnst, num_adver, eps_timestep
             # update agent drone noise
             agent.u_noise = agent_u_noise_cnst * math.exp(-expo_decay_cnst * eps_timestep)
             agent.c_noise = agent_c_noise_cnst * math.exp(-expo_decay_cnst * eps_timestep)
+
+def calculate_elo_rating(agent_curr_elo, adver_curr_elo, k_agent, k_adver, d, results_list, results_reward_dict):
+
+    """ 
+    function to calculate the elo rating of agent and adversarial drones based on results 
+
+    results legend:
+
+    win = 1
+    loss = 0
+
+    if there exit screen is considered: 
+
+        exit screen --> 0 for agent that exceed screen, 0.5 for agent that didn't 
+
+    """
+    
+    # store agent and adver current elo
+    agent_elo = agent_curr_elo
+    adver_elo = adver_curr_elo
+
+    # iterate over results in results list
+    for i in range(len(results_list)):
+
+        # calculate expected probability of agent and adver to win
+        q_agent = math.pow(10, agent_elo / float(d))
+        q_adver = math.pow(10, adver_elo / float(d))
+        e_agent = q_agent / (q_agent + q_adver)
+        e_adver = q_adver / (q_agent + q_adver)
+
+        # update elos based on outcome accordingly
+        agent_elo = agent_elo + k_agent * (results_reward_dict[str(results_list[i])][0] - e_agent)
+        adver_elo = adver_elo + k_adver * (results_reward_dict[str(results_list[i])][1] - e_adver)
+
+    return agent_elo, adver_elo
+
+def update_agent_goals_softmax_weights(agent_goals_softmax_weights, agent_goal_distribution, agent_elo, adver_elo, agent_goal, terminal_condition):
+
+    """ function to update the softmax weights based on elo for agent """
+
+    # check if its exit screen
+    if terminal_condition == 3 or terminal_condition == 4:
+
+        # no change to weights
+        return agent_goals_softmax_weights
+
+    # iterate over agent_goal_distribution
+    for i in range(len(agent_goal_distribution)):
+
+        # check if goal is agent_goal
+        if agent_goal_distribution[i] == agent_goal:
+
+            # obtain index of goal
+            agent_goal_index = i
+
+    # check if its adver win
+    if terminal_condition == 1:
+
+        # iterate over agent_goals_softmax_weights
+        for i in range(len(agent_goals_softmax_weights)):
+
+            # increase weights for easier goals
+            if i <= agent_goal_index:
+
+                # increase weight proportional to max of elo ratio
+                agent_goals_softmax_weights[i] += max(agent_elo / adver_elo, adver_elo / agent_elo)
+
+            # decrease weights for harder goals
+            elif i > agent_goal_index:
+
+                # decrease weight proportional to max of elo ratio
+                agent_goals_softmax_weights[i] -= max(agent_elo / adver_elo, adver_elo / agent_elo)
+
+    # check if its agent win
+    elif terminal_condition == 2:
+
+        # iterate over agent_goals_softmax_weights
+        for i in range(len(agent_goals_softmax_weights)):
+
+            # decrease weights for easier goals
+            if i <= agent_goal_index:
+
+                # decrease weight proportional to agent strength over adversarial
+                agent_goals_softmax_weights[i] -= agent_elo / adver_elo 
+
+            # increase weights for harder goals
+            elif i > agent_goal_index:
+
+                # increase weight proportional to agent strength over adversarial
+                agent_goals_softmax_weights[i] += agent_elo / adver_elo 
+
+    # obtain scaler 
+    scaler = MinMaxScaler(feature_range = (-1, 1))
+    agent_goals_softmax_weights = np.squeeze(scaler.fit_transform(agent_goals_softmax_weights.reshape(-1, 1)))
+
+    # replace nan is any with small value for numerical stability
+    agent_goals_softmax_weights = np.nan_to_num(agent_goals_softmax_weights, nan = 10**-5)
+
+    return agent_goals_softmax_weights
+
+def update_adver_goals_softmax_weights(adver_goals_softmax_weights, adver_goal_distribution, agent_elo, adver_elo, adver_goal, terminal_condition):
+
+    """ function to update the softmax weights based on elo for adversarial """
+
+    # check if its exit screen
+    if terminal_condition == 3 or terminal_condition == 4:
+
+        # no change to weights
+        return adver_goals_softmax_weights
+
+    # iterate over adver_goal_distribution
+    for i in range(len(adver_goal_distribution)):
+
+        # check if goal is agent_goal
+        if adver_goal_distribution[i] == adver_goal:
+
+            # obtain index of goal
+            adver_goal_index = i
+
+    # check if its adver win
+    if terminal_condition == 1:
+
+        # iterate over adver_goals_softmax_weights
+        for i in range(len(adver_goals_softmax_weights)):
+
+            # increase weights for harder goals
+            if i <= adver_goal_index:
+
+                # increase weight proportional to adversarial strength over agent
+                adver_goals_softmax_weights[i] += adver_elo / agent_elo 
+
+            # decrease weights for easier goals
+            elif i > adver_goal_index:
+
+                # decrease weight proportional to adversarial strength over agent
+                adver_goals_softmax_weights[i] -= adver_elo / agent_elo 
+
+    # check if its agent win
+    elif terminal_condition == 2:
+
+        # iterate over adver_goals_softmax_weights
+        for i in range(len(adver_goals_softmax_weights)):
+
+            # decrease weights for harder goals
+            if i <= adver_goal_index:
+
+                # decrease weight proportional to max of elo ratio
+                adver_goals_softmax_weights[i] -= max(agent_elo / adver_elo, adver_elo / agent_elo)
+
+            # increase weights for easier goals
+            elif i > adver_goal_index:
+
+                # increase weight proportional to max of elo ratio
+                adver_goals_softmax_weights[i] += max(agent_elo / adver_elo, adver_elo / agent_elo) 
+
+    # obtain scaler 
+    scaler = MinMaxScaler(feature_range = (-1, 1))
+    adver_goals_softmax_weights = np.squeeze(scaler.fit_transform(adver_goals_softmax_weights.reshape(-1, 1))) 
+
+    # replace nan is any with small value for numerical stability
+    adver_goals_softmax_weights = np.nan_to_num(adver_goals_softmax_weights, nan = 10**-5)
+    
+    return adver_goals_softmax_weights

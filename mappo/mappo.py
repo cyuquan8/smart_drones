@@ -67,26 +67,6 @@ class mappo:
         self.grad_clipping = grad_clipping
         self.grad_norm_clip = grad_norm_clip
 
-        # if mode is not test
-        if mode == 'train':
-            
-            # create replay buffer
-            self.replay_buffer = mappo_replay_buffer(num_agents = num_agents, batch_size = batch_size)
-
-        # if test mode
-        elif mode == 'test':
-            
-            # load all models
-            self.load_all_models()
-
-        elif mode == "load_and_train":
-
-            # create replay buffer
-            self.replay_buffer = mappo_replay_buffer(num_agents = num_agents, batch_size = batch_size)
-
-            # load all models
-            self.load_all_models()
-
         # iterate over num_agents
         for i in range(num_agents):
             
@@ -111,6 +91,26 @@ class mappo:
             # update critic checkpoints_path attributes
             self.mappo_agents_list[i].mappo_critic.checkpoint_path = os.path.join(self.mappo_agents_list[i].mappo_critic.checkpoint_dir, 
                                                                                   self.mappo_agents_list[i].mappo_critic.model_name + "_" + str(i) + ".pt")
+
+        # if mode is not test
+        if mode == 'train':
+            
+            # create replay buffer
+            self.replay_buffer = mappo_replay_buffer(num_agents = num_agents, batch_size = batch_size)
+
+        # if test mode
+        elif mode == 'test':
+            
+            # load all models
+            self.load_all_models()
+
+        elif mode == "load_and_train":
+
+            # create replay buffer
+            self.replay_buffer = mappo_replay_buffer(num_agents = num_agents, batch_size = batch_size)
+
+            # load all models
+            self.load_all_models()
 
     def select_actions(self, mode, env_agents, actor_state_list):
        
@@ -174,45 +174,41 @@ class mappo:
                 # sample replay buffer
                 actor_state_list, actor_u_action_list, actor_c_action_list, actor_u_action_log_probs_list, actor_c_action_log_probs_list, critic_state_list, critic_state_value_list, rewards, \
                 terminal, batches = self.replay_buffer.sample_log(self.batch_size)
-                
-                # # tensor for advatange and q_values
-                # advantages = T.zeros(len(rewards), dtype = T.float, device = device)
-                # q_values = T.zeros(len(rewards), dtype = T.float, device = device)
 
                 # convert rewards and critic state value list
                 critic_state_value_list_t = T.tensor(critic_state_value_list, dtype = T.float).to(device)
 
-                # numpy arrays for advantage and q_values
-                advantages = np.zeros(len(rewards), dtype = np.float32)
-                q_values = np.zeros(len(rewards), dtype = np.float32)
+                # numpy arrays for advantage and returns
+                advantages = np.zeros(len(rewards[agent_index]), dtype = np.float32)
+                returns = np.zeros(len(rewards[agent_index]), dtype = np.float32)
 
                 # variable to track gae
                 gae = 0
 
                 # iterate over timesteps 
-                for step in reversed(range(len(rewards) - 1)):
+                for step in reversed(range(len(rewards[agent_index]) - 1)):
                     
                     # obtain td_delta error
-                    td_delta = rewards[step] + self.gamma * value_normaliser.denormalize(critic_state_value_list_t[agent_index][step + 1]) * (1 - terminal[step + 1]) - \
+                    td_delta = rewards[agent_index][step] + self.gamma * value_normaliser.denormalize(critic_state_value_list_t[agent_index][step + 1]) * (1 - terminal[agent_index][step]) - \
                                value_normaliser.denormalize(critic_state_value_list_t[agent_index][step])
                     
                     # obtain gae
                     gae = td_delta + self.gamma * self.gae_lambda * gae
-                    
-                    # obtain advantage and q_values
-                    advantages[step] = gae
-                    q_values[step] = gae + value_normaliser.denormalize(critic_state_value_list_t[agent_index][step])
-
+                  
+                    # obtain advantage and returns
+                    advantages[step] = np.squeeze(gae)
+                    returns[step] = np.squeeze(gae + value_normaliser.denormalize(critic_state_value_list_t[agent_index][step]))
+              
                 # obtain normalised advantages
                 advantages_copy = advantages.copy()
                 mean_advantages = np.nanmean(advantages_copy)
                 std_advantages = np.nanstd(advantages_copy)
                 advantages = (advantages - mean_advantages) / (std_advantages + 1e-5)
-
-                # tensor for advatange and q_values
+               
+                # tensor for advatange and returns
                 advantages = T.tensor(advantages, dtype = T.float).to(device)
-                q_values = T.tensor(q_values, dtype = T.float).to(device)
-
+                returns = T.tensor(returns, dtype = T.float).to(device)
+             
                 # iterate over batches
                 for batch in batches:
                     
@@ -242,10 +238,10 @@ class mappo:
                     # obtain policy ratio
                     policy_ratio = T.cat((T.exp(actor_u_action_prime_log_probs), T.exp(actor_c_action_prime_log_probs)), axis = 1) / \
                                    T.cat((T.exp(actor_u_action_log_probs), T.exp(actor_c_action_log_probs)), axis = 1)
-                    
+                   
                     # obtain weighted policy ratio
                     weighted_policy_ratio = policy_ratio * T.unsqueeze(advantages[batch], dim = 1)
-                    
+
                     # obtain weighted clipped policy ratio
                     weighted_clipped_policy_ratio = T.clamp(policy_ratio, 1 - self.clip_coeff, 1 + self.clip_coeff) * T.unsqueeze(advantages[batch], dim = 1)
 
@@ -273,23 +269,23 @@ class mappo:
                                                 (critic_state_value_prime - T.unsqueeze(critic_state_value, dim = 1)).clamp(- self.clip_coeff, self.clip_coeff)
                     
                     # update value normaliser / popart
-                    value_normaliser.update(q_values[batch])
+                    value_normaliser.update(returns[batch])
 
                     # check if to use huber loss
                     if self.use_huber_loss == True:
 
                         # obtain huber loss for clipped and original
                         critic_loss_clipped = T.nn.functional.huber_loss(input = T.reshape(critic_state_value_clipped, (1, -1)), 
-                                              target = value_normaliser.normalize(q_values[batch]), delta = self.huber_delta)
+                                              target = value_normaliser.normalize(returns[batch]), delta = self.huber_delta)
                         critic_loss_original = T.nn.functional.huber_loss(input = T.reshape(critic_state_value_prime, (1, -1)), 
-                                               target = value_normaliser.normalize(q_values[batch]), delta = self.huber_delta)
+                                               target = value_normaliser.normalize(returns[batch]), delta = self.huber_delta)
 
                     # else use mse
                     else:
 
                         # obtain mse  loss for clipped and original
-                        critic_loss_clipped = T.nn.functional.mse_loss(input = T.reshape(critic_state_value_clipped, (1, -1)), target = value_normaliser.normalize(q_values[batch]))
-                        critic_loss_original = T.nn.functional.mse_loss(input = T.reshape(critic_state_value_prime, (1, -1)), target = value_normaliser.normalize(q_values[batch]))
+                        critic_loss_clipped = T.nn.functional.mse_loss(input = T.reshape(critic_state_value_clipped, (1, -1)), target = value_normaliser.normalize(returns[batch]))
+                        critic_loss_original = T.nn.functional.mse_loss(input = T.reshape(critic_state_value_prime, (1, -1)), target = value_normaliser.normalize(returns[batch]))
 
                     # check if to use clipped losses 
                     if self.use_clipped_value_loss == True:

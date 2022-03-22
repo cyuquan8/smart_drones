@@ -15,7 +15,7 @@ class maddpg:
     
     def __init__(self, mode, training_name, discount_rate, lr_actor, lr_critic, num_agents, num_opp, actor_dropout_p, critic_dropout_p, state_fc_input_dims, state_fc_output_dims, u_action_dims, 
                  c_action_dims, num_heads, bool_concat, gnn_input_dims, gnn_output_dims, gmt_hidden_dims, gmt_output_dims, u_actions_fc_input_dims, u_actions_fc_output_dims, c_actions_fc_input_dims, 
-                 c_actions_fc_output_dims, concat_fc_output_dims, tau, mem_size, batch_size, update_target, grad_clipping, grad_norm_clip):
+                 c_actions_fc_output_dims, concat_fc_output_dims, tau, mem_size, batch_size, update_target, grad_clipping, grad_norm_clip, is_adversary):
             
         """ class constructor for attributes of the maddpg class (for multiple agents) """
         
@@ -46,68 +46,148 @@ class maddpg:
         self.grad_clipping = grad_clipping
         self.grad_norm_clip = grad_norm_clip
 
-        # if mode is not test
-        if mode == 'train':
-            
-            # create replay buffer
-            self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_agents, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
-                                                      actor_input_dims = state_fc_input_dims)
+        # check if agent
+        if is_adversary == False:
 
-        # if test mode
-        elif mode == 'test':
-            
-            # load all models
-            self.load_all_models()
-
-        elif mode == "load_and_train":
-
-            # create new replay buffer
-            self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_agents, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
-                                                      actor_input_dims = state_fc_input_dims)
-
-            # load all models
-            self.load_all_models()
-
-        # iterate over num_agents
-        for i in range(num_agents):
-            
-            # append maddpg agent to list
-            self.maddpg_agents_list.append(maddpg_agent(mode = mode, training_name = training_name, discount_rate = discount_rate, lr_actor = lr_actor, lr_critic = lr_critic, num_agents = num_agents, 
-                                                        num_opp = num_opp, actor_dropout_p = actor_dropout_p, critic_dropout_p = critic_dropout_p, state_fc_input_dims = state_fc_input_dims[i], 
-                                                        state_fc_output_dims = state_fc_output_dims, u_action_dims = u_action_dims, c_action_dims = c_action_dims, num_heads = num_heads, 
-                                                        bool_concat = bool_concat, gnn_input_dims = gnn_input_dims[i], gnn_output_dims = gnn_output_dims, gmt_hidden_dims = gmt_hidden_dims, 
-                                                        gmt_output_dims = gmt_output_dims, u_actions_fc_input_dims = u_actions_fc_input_dims, u_actions_fc_output_dims = u_actions_fc_output_dims, 
-                                                        c_actions_fc_input_dims = c_actions_fc_input_dims, c_actions_fc_output_dims = c_actions_fc_output_dims, 
-                                                        concat_fc_output_dims = concat_fc_output_dims, tau = tau))
-            
-            # update actor model_names attributes for checkpoints
-            self.maddpg_agents_list[i].maddpg_actor.model_name = "maddpg_actor"
-    
-            # update actor checkpoints_path attributes
-            self.maddpg_agents_list[i].maddpg_actor.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_actor.checkpoint_dir, 
-                                                                                   self.maddpg_agents_list[i].maddpg_actor.model_name + "_" + str(i) + ".pt")
-            
-            # update target actor model_names attributes for checkpoints
-            self.maddpg_agents_list[i].maddpg_target_actor.model_name = "maddpg_target_actor"
-    
-            # update target actor checkpoints_path attributes
-            self.maddpg_agents_list[i].maddpg_target_actor.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_target_actor.checkpoint_dir, 
-                                                                                          self.maddpg_agents_list[i].maddpg_target_actor.model_name + "_" + str(i) + ".pt")
-            
-            # update critic model_names attributes for checkpoints
-            self.maddpg_agents_list[i].maddpg_critic.model_name = "maddpg_critic"
-    
-            # update critic checkpoints_path attributes
-            self.maddpg_agents_list[i].maddpg_critic.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_critic.checkpoint_dir, 
-                                                                                    self.maddpg_agents_list[i].maddpg_critic.model_name + "_" + str(i) + ".pt")
-            
-            # update target critic model_names attributes for checkpoints
-            self.maddpg_agents_list[i].maddpg_target_critic.model_name = "maddpg_target_critic"
-    
-            # update target critic checkpoints_path attributes
-            self.maddpg_agents_list[i].maddpg_target_critic.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_target_critic.checkpoint_dir, 
-                                                                                           self.maddpg_agents_list[i].maddpg_target_critic.model_name + "_" + str(i) + ".pt")
+            # iterate over num_agents
+            for i in range(num_agents):
+                
+                # append maddpg agent to list
+                self.maddpg_agents_list.append(maddpg_agent(mode = mode, training_name = training_name, discount_rate = discount_rate, lr_actor = lr_actor, lr_critic = lr_critic, 
+                                                            num_agents = num_agents, num_opp = num_opp, actor_dropout_p = actor_dropout_p, critic_dropout_p = critic_dropout_p, 
+                                                            state_fc_input_dims = state_fc_input_dims[i], state_fc_output_dims = state_fc_output_dims, u_action_dims = u_action_dims, 
+                                                            c_action_dims = c_action_dims, num_heads = num_heads, bool_concat = bool_concat, gnn_input_dims = gnn_input_dims[i], 
+                                                            gnn_output_dims = gnn_output_dims, gmt_hidden_dims = gmt_hidden_dims, gmt_output_dims = gmt_output_dims, 
+                                                            u_actions_fc_input_dims = u_actions_fc_input_dims, u_actions_fc_output_dims = u_actions_fc_output_dims, 
+                                                            c_actions_fc_input_dims = c_actions_fc_input_dims, c_actions_fc_output_dims = c_actions_fc_output_dims, 
+                                                            concat_fc_output_dims = concat_fc_output_dims, tau = tau))
+                
+                # update actor model_names attributes for checkpoints
+                self.maddpg_agents_list[i].maddpg_actor.model_name = "maddpg_actor"
         
+                # update actor checkpoints_path attributes
+                self.maddpg_agents_list[i].maddpg_actor.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_actor.checkpoint_dir, 
+                                                                                       self.maddpg_agents_list[i].maddpg_actor.model_name + "_" + str(i) + ".pt")
+                
+                # update target actor model_names attributes for checkpoints
+                self.maddpg_agents_list[i].maddpg_target_actor.model_name = "maddpg_target_actor"
+        
+                # update target actor checkpoints_path attributes
+                self.maddpg_agents_list[i].maddpg_target_actor.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_target_actor.checkpoint_dir, 
+                                                                                              self.maddpg_agents_list[i].maddpg_target_actor.model_name + "_" + str(i) + ".pt")
+                
+                # update critic model_names attributes for checkpoints
+                self.maddpg_agents_list[i].maddpg_critic.model_name = "maddpg_critic"
+        
+                # update critic checkpoints_path attributes
+                self.maddpg_agents_list[i].maddpg_critic.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_critic.checkpoint_dir, 
+                                                                                        self.maddpg_agents_list[i].maddpg_critic.model_name + "_" + str(i) + ".pt")
+                
+                # update target critic model_names attributes for checkpoints
+                self.maddpg_agents_list[i].maddpg_target_critic.model_name = "maddpg_target_critic"
+        
+                # update target critic checkpoints_path attributes
+                self.maddpg_agents_list[i].maddpg_target_critic.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_target_critic.checkpoint_dir, 
+                                                                                               self.maddpg_agents_list[i].maddpg_target_critic.model_name + "_" + str(i) + ".pt")
+
+                # if mode is not test
+                if mode == 'train':
+                    
+                    # check if agent
+                    if is_adversary == False:
+
+                        # create replay buffer
+                        self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_agents, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
+                                                                  actor_input_dims = state_fc_input_dims)
+
+                # if test mode
+                elif mode == 'test':
+                    
+                    # load all models
+                    self.load_all_models()
+
+                elif mode == "load_and_train":
+
+                    # check if agent
+                    if is_adversary == False:
+
+                        # create replay buffer
+                        self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_agents, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
+                                                                  actor_input_dims = state_fc_input_dims)
+                    # load all models
+                    self.load_all_models()
+
+        # check if adversarial
+        elif is_adversary == True:
+
+            # iterate over num_opp
+            for i in range(num_opp):
+                
+                # append maddpg agent to list
+                self.maddpg_agents_list.append(maddpg_agent(mode = mode, training_name = training_name, discount_rate = discount_rate, lr_actor = lr_actor, lr_critic = lr_critic, 
+                                                            num_agents = num_agents, num_opp = num_opp, actor_dropout_p = actor_dropout_p, critic_dropout_p = critic_dropout_p, 
+                                                            state_fc_input_dims = state_fc_input_dims[i], state_fc_output_dims = state_fc_output_dims, u_action_dims = u_action_dims, 
+                                                            c_action_dims = c_action_dims, num_heads = num_heads, bool_concat = bool_concat, gnn_input_dims = gnn_input_dims[i], 
+                                                            gnn_output_dims = gnn_output_dims, gmt_hidden_dims = gmt_hidden_dims, gmt_output_dims = gmt_output_dims, 
+                                                            u_actions_fc_input_dims = u_actions_fc_input_dims, u_actions_fc_output_dims = u_actions_fc_output_dims, 
+                                                            c_actions_fc_input_dims = c_actions_fc_input_dims, c_actions_fc_output_dims = c_actions_fc_output_dims, 
+                                                            concat_fc_output_dims = concat_fc_output_dims, tau = tau))
+                
+                # update actor model_names attributes for checkpoints
+                self.maddpg_agents_list[i].maddpg_actor.model_name = "maddpg_actor"
+        
+                # update actor checkpoints_path attributes
+                self.maddpg_agents_list[i].maddpg_actor.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_actor.checkpoint_dir, 
+                                                                                       self.maddpg_agents_list[i].maddpg_actor.model_name + "_" + str(i) + ".pt")
+                
+                # update target actor model_names attributes for checkpoints
+                self.maddpg_agents_list[i].maddpg_target_actor.model_name = "maddpg_target_actor"
+        
+                # update target actor checkpoints_path attributes
+                self.maddpg_agents_list[i].maddpg_target_actor.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_target_actor.checkpoint_dir, 
+                                                                                              self.maddpg_agents_list[i].maddpg_target_actor.model_name + "_" + str(i) + ".pt")
+                
+                # update critic model_names attributes for checkpoints
+                self.maddpg_agents_list[i].maddpg_critic.model_name = "maddpg_critic"
+        
+                # update critic checkpoints_path attributes
+                self.maddpg_agents_list[i].maddpg_critic.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_critic.checkpoint_dir, 
+                                                                                        self.maddpg_agents_list[i].maddpg_critic.model_name + "_" + str(i) + ".pt")
+                
+                # update target critic model_names attributes for checkpoints
+                self.maddpg_agents_list[i].maddpg_target_critic.model_name = "maddpg_target_critic"
+        
+                # update target critic checkpoints_path attributes
+                self.maddpg_agents_list[i].maddpg_target_critic.checkpoint_path = os.path.join(self.maddpg_agents_list[i].maddpg_target_critic.checkpoint_dir, 
+                                                                                               self.maddpg_agents_list[i].maddpg_target_critic.model_name + "_" + str(i) + ".pt")
+
+                # if mode is not test
+                if mode == 'train':
+                    
+                    # check if agent
+                    if is_adversary == False:
+
+                        # create replay buffer
+                        self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_opp, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
+                                                                  actor_input_dims = state_fc_input_dims)
+
+                # if test mode
+                elif mode == 'test':
+                    
+                    # load all models
+                    self.load_all_models()
+
+                elif mode == "load_and_train":
+
+                    # check if agent
+                    if is_adversary == False:
+
+                        # create replay buffer
+                        self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_opp, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
+                                                                  actor_input_dims = state_fc_input_dims)
+                    # load all models
+                    self.load_all_models()    
+
     def select_actions(self, mode, env_agents, actor_state_list):
        
         """ function to select actions for the all agents given state observed by respective agent """

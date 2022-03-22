@@ -42,6 +42,10 @@ class Scenario(BaseScenario):
 		# create episode start time attribute to determine episode length
 		world.ep_start_time = time.time()
 
+		# create attributes for the number of adversaries, good agents
+		world.num_adversaries = num_adversaries
+		world.num_good_agents = num_good_agents
+
 		# number of agents
 		num_agents = num_adversaries + num_good_agents
 
@@ -256,56 +260,69 @@ class Scenario(BaseScenario):
 		rew = 0
 
 		# obtain list of adversaries
-		adv_list = self.adversaries(world)
+		adver_list = self.adversaries(world)
 
 		# iterate over list of adversaries
-		for adv in adv_list:
+		for adver in adver_list:
 
 			# obtain radius from origin of adversarial drone 
-			radius = np.sqrt(np.sum(np.square(adv.state.p_pos)))
+			radius = np.sqrt(np.sum(np.square(adver.state.p_pos)))
 
 			# check if adversarial drone entered the restricted zone
 			if radius <= self.r_rad:
 
-				# big penalty to good agent if adversarial drone entered the restricted zone weighted based on time of occurence
-				rew -= self.big_rew_cnst * ((float(self.ep_time_limit) - (time.time() - world.ep_start_time)) / float(self.ep_time_limit) + 0.5)
+				# big penalty to good agent if adversarial drone entered the restricted zone 
+				rew -= self.big_rew_cnst 
 
-			# reward staying close to r_rad
-			rew -= self.rew_multiplier_cnst * (1 - radius)
+				# # reward for keeping away adv drone from r_rad
+				# rew -= self.rew_multiplier_cnst * (1.1 - radius)
 
-		def bound(x):
+				return rew
 
-			""" function to penalise agents for exiting the screen"""
+		# reward good agent for acheiving objective
+		if time.time() - world.ep_start_time >= self.ep_time_limit:
 
-			# case 1: x < 0.9
-			if x < 0.9:
+			rew += self.big_rew_cnst
 
-				return 0
+			return rew
 
-			# case 2 x < 1.0
-			if x < 1.0:
+		# reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True 
 
-				return (x - 0.9) * 10
-
-			# case 3: x >= 1
-			return min(np.exp(2 * x - 2), 10)
-
-		# iterate over agent position dimension
-		for p in range(world.dim_p):
-
-			# obtain absolute value for position for that dimension
-			x = abs(agent.state.p_pos[p])
-
-			# penalty for leaivng screen
-			rew -= bound(x)
-
-		# reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True and vice-versa
-
-		# check if agent exceeds screen boundary
+		# # check if agent exceeds screen boundary
 		if np.sqrt(np.sum(np.square(agent.state.p_pos))) > 1:
 
 			# big penalty to agent if it exits screen boundary
 			rew -= self.big_rew_cnst
+
+			return rew
+
+		# # reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == False
+
+		# def bound(x):
+
+		# 	""" function to penalise agents for exiting the screen"""
+
+		# 	# case 1: x < 0.9
+		# 	if x < 0.9:
+
+		# 		return 0
+
+		# 	# case 2 x < 1.0
+		# 	if x < 1.0:
+
+		# 		return (x - 0.9) * 10
+
+		# 	# case 3: x >= 1
+		# 	return min(np.exp(2 * x - 2), 10)
+
+		# # iterate over agent position dimension
+		# for p in range(world.dim_p):
+
+		# 	# obtain absolute value for position for that dimension
+		# 	x = abs(agent.state.p_pos[p])
+
+		# 	# penalty for leaivng screen
+		# 	rew -= bound(x)
 
 		return rew
 
@@ -316,51 +333,125 @@ class Scenario(BaseScenario):
 		# initialise reward to zero
 		rew = 0
 
-		# obtain list of adversaries
-		adv_list = self.adversaries(world)
+		# obtain list of adversarial drones
+		adver_list = self.adversaries(world)
 
 		# iterate over list of adversaries
-		for adv in adv_list:
+		for adver in adver_list:
 
 			# obtain radius from origin of adversarial drone 
-			radius = np.sqrt(np.sum(np.square(adv.state.p_pos)))
+			radius = np.sqrt(np.sum(np.square(adver.state.p_pos)))
 
 			# check if adversarial drone entered the restricted zone
 			if radius <= self.r_rad:
 
-				# big penalty to good agent if adversarial drone entered the restricted zone weighted based on time of occurence
-				rew += self.big_rew_cnst * ((float(self.ep_time_limit) - (time.time() - world.ep_start_time)) / float(self.ep_time_limit) + 0.5)
+				# big reward to adversarial agent if it entered the restricted zone weighted based on time of occurence
+				rew += self.big_rew_cnst
 
-			# reward coming close to r_rad
-			rew += self.rew_multiplier_cnst * (1 - radius)
+				# # reward coming close to r_rad
+				# rew += self.rew_multiplier_cnst * (1.1 - radius)
 
-		def bound(x):
+				return rew
 
-			""" function to penalise agents for exiting the screen"""
+		# reward good agent for acheiving objective
+		if time.time() - world.ep_start_time >= self.ep_time_limit:
 
-			# case 1: x < 0.9
-			if x < 0.9:
+			rew -= self.big_rew_cnst
 
-				return 0
+			return rew
 
-			# case 2 x < 1.0
-			if x < 1.0:
+		# reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True 
 
-				return (x - 0.9) * 10
+		# # check if agent exceeds screen boundary
+		if np.sqrt(np.sum(np.square(agent.state.p_pos))) > 1:
 
-			# case 3: x >= 1
-			return min(np.exp(2 * x - 2), 10)
+			# big penalty to agent if it exits screen boundary
+			rew -= self.big_rew_cnst
 
-		# iterate over agent position dimension
-		for p in range(world.dim_p):
+			return rew
 
-			# obtain absolute value for position for that dimension
-			x = abs(agent.state.p_pos[p])
+		# # reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == False
 
-			# penalty for leaivng screen
-			rew -= bound(x)
+		# def bound(x):
 
-		# reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True and vice-versa
+		# 	""" function to penalise agents for exiting the screen"""
+
+		# 	# case 1: x < 0.9
+		# 	if x < 0.9:
+
+		# 		return 0
+
+		# 	# case 2 x < 1.0
+		# 	if x < 1.0:
+
+		# 		return (x - 0.9) * 10
+
+		# 	# case 3: x >= 1
+		# 	return min(np.exp(2 * x - 2), 10)
+
+		# # iterate over agent position dimension
+		# for p in range(world.dim_p):
+
+		# 	# obtain absolute value for position for that dimension
+		# 	x = abs(agent.state.p_pos[p])
+
+		# 	# penalty for leaivng screen
+		# 	rew -= bound(x)
+
+		return rew
+
+	def reward_goal(self, agent, world, goal):
+
+		""" function that returns reward for any agent for a given goal"""
+
+		# different reward for good and adverserial agents
+		main_reward = self.adversary_goal_reward(agent, world, goal) if agent.adversary else self.agent_goal_reward(agent, world, goal)
+
+		return main_reward
+
+	def agent_goal_reward(self, agent, world, goal):
+
+		""" function that returns reward for any good agent for a given goal """
+
+		# initialise reward to zero
+		rew = 0
+
+		# obtain list of adversaries
+		adver_list = self.adversaries(world)
+
+		# iterate over list of adversaries
+		for adver in adver_list:
+
+			# obtain radius from origin of adversarial drone 
+			radius = np.sqrt(np.sum(np.square(adver.state.p_pos)))
+
+			# check if adversarial drone entered the restricted zone
+			if radius <= self.r_rad:
+
+				# big penalty to good agent if adversarial drone entered the restricted zone 
+				rew -= self.big_rew_cnst 
+
+				# # reward for keeping away adv drone from r_rad
+				# rew -= self.rew_multiplier_cnst * (1.1 - radius)
+
+				return rew
+
+		# reward good agent for acheiving goal
+		if time.time() - world.ep_start_time >= goal:
+
+			# check if goal is original goal
+			if goal >= self.ep_time_limit:
+
+				rew += self.big_rew_cnst
+
+			# half of big_rew_cnst if goal is not original goal
+			else: 
+
+				rew += self.big_rew_cnst / 10
+
+			return rew
+
+		# reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True 
 
 		# check if agent exceeds screen boundary
 		if np.sqrt(np.sum(np.square(agent.state.p_pos))) > 1:
@@ -368,25 +459,169 @@ class Scenario(BaseScenario):
 			# big penalty to agent if it exits screen boundary
 			rew -= self.big_rew_cnst
 
+			return rew
+
+		# reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == False
+
+		# def bound(x):
+
+		# 	""" function to penalise agents for exiting the screen"""
+
+		# 	# case 1: x < 0.9
+		# 	if x < 0.9:
+
+		# 		return 0
+
+		# 	# case 2 x < 1.0
+		# 	if x < 1.0:
+
+		# 		return (x - 0.9) * 10
+
+		# 	# case 3: x >= 1
+		# 	return min(np.exp(2 * x - 2), 10)
+
+		# # iterate over agent position dimension
+		# for p in range(world.dim_p):
+
+		# 	# obtain absolute value for position for that dimension
+		# 	x = abs(agent.state.p_pos[p])
+
+		# 	# penalty for leaivng screen
+		# 	rew -= bound(x)
+
+		return rew
+
+	def adversary_goal_reward(self, agent, world, goal):
+
+		""" function that returns reward for any adversarial agent """
+
+		# initialise reward to zero
+		rew = 0
+
+		# obtain list of adversarial drones
+		adver_list = self.adversaries(world)
+
+		# iterate over list of adversaries
+		for adver in adver_list:
+
+			# obtain radius from origin of adversarial drone 
+			radius = np.sqrt(np.sum(np.square(adver.state.p_pos)))
+
+			# check if adversarial drone entered the restricted zone
+			if radius <= goal:
+
+				# check if goal is original goal
+				if goal <= self.r_rad:
+
+					# big reward to adversarial agent if it entered the restricted zone weighted based on time of occurence
+					rew += self.big_rew_cnst
+
+				# half of original reward if goal is not original goal
+				else: 
+
+					rew += self.big_rew_cnst / 10
+
+				# # reward coming close to r_rad
+				# rew += self.rew_multiplier_cnst * (1.1 - radius)
+
+				return rew
+
+		# reward good agent for acheiving objective
+		if time.time() - world.ep_start_time >= self.ep_time_limit:
+
+			rew -= self.big_rew_cnst
+
+			return rew
+
+		# reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True 
+
+		# check if agent exceeds screen boundary
+		if np.sqrt(np.sum(np.square(agent.state.p_pos))) > 1:
+
+			# big penalty to agent if it exits screen boundary
+			rew -= self.big_rew_cnst
+
+			return rew
+
+		# reward for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == False
+
+		# def bound(x):
+
+		# 	""" function to penalise agents for exiting the screen"""
+
+		# 	# case 1: x < 0.9
+		# 	if x < 0.9:
+
+		# 		return 0
+
+		# 	# case 2 x < 1.0
+		# 	if x < 1.0:
+
+		# 		return (x - 0.9) * 10
+
+		# 	# case 3: x >= 1
+		# 	return min(np.exp(2 * x - 2), 10)
+
+		# # iterate over agent position dimension
+		# for p in range(world.dim_p):
+
+		# 	# obtain absolute value for position for that dimension
+		# 	x = abs(agent.state.p_pos[p])
+
+		# 	# penalty for leaivng screen
+		# 	rew -= bound(x)
+
 		return rew
 
 	def is_terminal(self, agent, world):
 
 		""" function to return to check if episode has terminated """
-		""" terminal condition 1: exceed time limit (agent drones win) """
-		""" terminal condition 2: adversarial drone enters restricted drone (adversarial drones win) """
+		""" terminal condition 1: adversarial drone enters restricted drone (adversarial drones win) """
+		""" terminal condition 2: exceed time limit (agent drones win) """
 		""" terminal condition 3: agent drone exceeds screen boundary (draw) """
 		""" terminal condition 4: adversarial drone exceeds screen boundary (draw) """
+
+		# check if adversarial drone has inflitrated restricted zone
+		if np.sqrt(np.sum(np.square(agent.state.p_pos))) < self.r_rad and agent.adversary == True:
+
+			return [True, 1]
 
 		# if episode time exceeds episode time limit, episode terminates with agent drones succeeding in defending the restricted zone
 		if time.time() - world.ep_start_time >= self.ep_time_limit:
 
-			return [True, 1] 
-		
-		# check if adversarial drone has inflitrated restricted zone
-		if np.sqrt(np.sum(np.square(agent.state.p_pos))) < self.r_rad and agent.adversary == True:
+			return [True, 2] 
 
-			return [True, 2]
+		# terminal condition for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True and vice-versa
+
+		# check if agent drone have exceeded screen boundary 
+		if np.sqrt(np.sum(np.square(agent.state.p_pos))) > 1 and agent.adversary == False:
+
+			return [True, 3]
+
+		# check if adversarial drone have exceeded screen boundary 
+		if np.sqrt(np.sum(np.square(agent.state.p_pos))) > 1 and agent.adversary == True:
+
+			return [True, 4]
+
+		return [False, 0]
+
+	def is_terminal_goal(self, agent, world, agent_goal, adver_goal):
+
+		""" function to return to check if episode has terminated """
+		""" terminal condition 1: adversarial drone enters restricted drone (adversarial drones win) """
+		""" terminal condition 2: exceed time limit (agent drones win) """
+		""" terminal condition 3: agent drone exceeds screen boundary (draw) """
+		""" terminal condition 4: adversarial drone exceeds screen boundary (draw) """
+
+		# check if adversarial drone has inflitrated restricted zone
+		if np.sqrt(np.sum(np.square(agent.state.p_pos))) < adver_goal and agent.adversary == True:
+
+			return [True, 1]
+
+		# if episode time exceeds episode time limit, episode terminates with agent drones succeeding in defending the restricted zone
+		if time.time() - world.ep_start_time >= agent_goal:
+
+			return [True, 2] 
 
 		# terminal condition for exiting screen. Remember to uncomment if EXIT_SCREEN_TERMINATE == True and vice-versa
 
@@ -462,11 +697,15 @@ class Scenario(BaseScenario):
 					# if outside agent's drone radius, radar gives info
 					else:
 
+						# obtain noise for position and velocity from normal distribution
+						pos_noise = np.random.normal(loc = 0.0, scale = self.r_noise_pos, size = None)
+						vel_noise = np.random.normal(loc = 0.0, scale = self.r_noise_vel, size = None)
+
 						# append position of agent in current iteration relative to agent's reference frame with noise if within agent's drone radius
-						good_pos.append(other.state.p_pos - agent.state.p_pos + self.r_noise_pos) 
+						good_pos.append(other.state.p_pos - agent.state.p_pos + pos_noise) 
 
 						# append velocity of agent in current iteration with radar noise if within agent's drone radius 
-						good_vel.append(other.state.p_vel + self.r_noise_vel)
+						good_vel.append(other.state.p_vel + vel_noise)
 
 				# check if agent in current iteration is adversarial agent
 				elif other.adversary:
@@ -486,11 +725,15 @@ class Scenario(BaseScenario):
 					# if outside agent's drone radius
 					else:
 
+						# obtain noise for position and velocity from normal distribution
+						pos_noise = np.random.normal(loc = 0.0, scale = self.r_noise_pos, size = None)
+						vel_noise = np.random.normal(loc = 0.0, scale = self.r_noise_vel, size = None)
+
 						# append position of agent in current iteration relative to agent's reference frame with noise if within agent's drone radius
-						adv_pos.append(other.state.p_pos - agent.state.p_pos + self.r_noise_pos) 
+						adv_pos.append(other.state.p_pos - agent.state.p_pos + pos_noise) 
 
 						# append velocity of agent in current iteration with radar noise if within agent's drone radius 
-						adv_vel.append(other.state.p_vel + self.r_noise_vel)
+						adv_vel.append(other.state.p_vel + vel_noise)
 
 			# check if agent is adversarial agent 
 			elif agent.adversary:
@@ -537,11 +780,16 @@ class Scenario(BaseScenario):
 					# if outside agent's drone radius
 					else:
 
+						# obtain noise for position and velocity from normal distribution
+						pos_noise = np.random.normal(loc = 0.0, scale = self.r_noise_pos, size = None)
+						vel_noise = np.random.normal(loc = 0.0, scale = self.r_noise_vel, size = None)
+
 						# append position of agent in current iteration relative to agent's reference frame with noise if within agent's drone radius
-						adv_pos.append(other.state.p_pos - agent.state.p_pos + self.r_noise_pos) 
+						adv_pos.append(other.state.p_pos - agent.state.p_pos + pos_noise) 
 
 						# append velocity of agent in current iteration with radar noise if within agent's drone radius 
-						adv_vel.append(other.state.p_vel + self.r_noise_vel)
-
+						adv_vel.append(other.state.p_vel + vel_noise)
+	
 		# return concenated observation
-		return np.concatenate([agent.state.c] + [agent.state.p_pos] + [agent.state.p_vel] + landmark_pos + good_comms + adv_comms + good_pos + adv_pos + good_vel + adv_vel)
+		return np.concatenate([[time.time() - world.ep_start_time]] + [agent.state.c] + [agent.state.p_pos] + [agent.state.p_vel] + landmark_pos + good_comms + adv_comms + good_pos + adv_pos + 
+							  good_vel + adv_vel)

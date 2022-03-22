@@ -211,7 +211,7 @@ class MultiAgentEnv(gym.Env):
                     else:
                         word = alphabet[np.argmax(other.state.c)]
                     message += (other.name + ' to ' + agent.name + ': ' + word + '   ')
-            print(message)
+            # print(message)
 
         for i in range(len(self.viewers)):
             # create viewers (if necessary)
@@ -334,3 +334,91 @@ class BatchMultiAgentEnv(gym.Env):
         for env in self.env_batch:
             results_n += env.render(mode, close)
         return results_n
+
+# wrapper for a goal based environment  
+# main changes are to the functions linked to rewards
+class MultiAgentGoalEnv(MultiAgentEnv):
+
+    def __init__(self, world, reset_callback = None, reward_callback = None, observation_callback = None, info_callback = None, done_callback = None, shared_viewer = True):
+
+        """ function to generate the attributes of environment """
+
+        # class constructor from MultiAgentEnv to inherit its attributes
+        super().__init__(world, reset_callback, reward_callback, observation_callback, info_callback, done_callback, shared_viewer)
+
+    def _get_reward(self, agent, goal):
+
+        """ function that returns reward callback """ 
+
+        if self.reward_callback is None:
+
+            return 0.0
+
+        return self.reward_callback(agent, self.world, goal) 
+
+    def _get_done(self, agent, agent_goal, adver_goal):
+
+        """ function that returns dones/is_terminal callback """
+
+        if self.done_callback is None:
+
+            return False
+
+        return self.done_callback(agent, self.world, agent_goal, adver_goal)
+
+    def step(self, action_n, agent_goal, adver_goal):
+
+        """ function that takes a step in the environment """
+
+        # list to store data
+        obs_n = []
+        reward_n = []
+        reward_add_n = []
+        done_n = []
+        info_n = {'n': []}
+
+        # obtain policy agents
+        self.agents = self.world.policy_agents
+
+        # set action for each agent
+        for i, agent in enumerate(self.agents):
+
+            self._set_action(action_n[i], agent, self.action_space[i])
+        
+        # advance world state
+        self.world.step()
+
+        # record observation for each agent
+        for agent in self.agents:
+
+            # append observation
+            obs_n.append(self._get_obs(agent))
+
+            # check if agent is adversary
+            if agent.adversary == True:
+
+                # use adversarial goal for reward
+                reward_n.append(self._get_reward(agent, adver_goal))
+
+                # append terminal conditions using adversarial goal
+                done_n.append(self._get_done(agent, agent_goal, adver_goal))
+
+            elif agent.adversary == False:
+
+                # use agent goal for reward
+                reward_n.append(self._get_reward(agent, agent_goal))
+
+                # append terminal conditions using agent goal
+                done_n.append(self._get_done(agent, agent_goal, adver_goal))
+
+            # append metrics
+            info_n['n'].append(self._get_info(agent))
+
+        # all agents get total reward in cooperative case
+        reward = np.sum(reward_n)
+
+        if self.shared_reward:
+
+            reward_n = [reward] * self.n
+
+        return obs_n, reward_n, done_n, info_n

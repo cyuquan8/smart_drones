@@ -38,13 +38,15 @@ class mappo_replay_buffer:
         # iterate over num_agents
         for actor_index in range(self.num_agents):
             
-            # append each actor log to list and critic state value
+            # append each actor log to list
             self.actor_state_log_list.append([])
             self.actor_u_action_log_list.append([])
             self.actor_c_action_log_list.append([])
             self.actor_u_action_log_probs_log_list.append([])
             self.actor_c_action_log_probs_log_list.append([])
             self.critic_state_value_log_list.append([])
+            self.rewards_log.append([])
+            self.terminal_log.append([])
     
     def log(self, actor_state, critic_state, critic_state_value, u_action, c_action, u_action_log_probs, c_action_log_probs, rewards, is_done):
         
@@ -53,18 +55,18 @@ class mappo_replay_buffer:
         # iterate over num_agents
         for actor_index in range(self.num_agents):
             
-            # log actor_state, motor and communication action and their log probabiities and critic_state_value for each actor
+            # log actor_state, motor and communication action and their log probabiities for each actor, critic_state_value, rewards and terminal 
             self.actor_state_log_list[actor_index].append(actor_state[actor_index])
             self.actor_u_action_log_list[actor_index].append(u_action[actor_index])
             self.actor_c_action_log_list[actor_index].append(c_action[actor_index])
             self.actor_u_action_log_probs_log_list[actor_index].append(u_action_log_probs[actor_index])
             self.actor_c_action_log_probs_log_list[actor_index].append(c_action_log_probs[actor_index])
             self.critic_state_value_log_list[actor_index].append(critic_state_value[actor_index])
+            self.rewards_log[actor_index].append(rewards[actor_index])
+            self.terminal_log[actor_index].append(is_done[actor_index])
 
-        # log critic_fc_state, rewards and terminal flag
+        # log critic_fc_state
         self.critic_state_log_list.append(critic_state)
-        self.rewards_log.append(rewards)
-        self.terminal_log.append(is_done)
     
     def clear_log(self):
 
@@ -97,6 +99,8 @@ class mappo_replay_buffer:
             self.actor_u_action_log_probs_log_list.append([])
             self.actor_c_action_log_probs_log_list.append([])
             self.critic_state_value_log_list.append([])
+            self.rewards_log.append([])
+            self.terminal_log.append([])
 
     def sample_log(self, batch_size):
         
