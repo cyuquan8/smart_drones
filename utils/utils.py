@@ -44,7 +44,7 @@ def within_drone_radius(agent, entity):
     # return True if entity is within agent's drone radius
     return True if dist < agent.drone_radius else False
 
-def make_env(scenario_name, dim_c, num_good_agents, num_adversaries, num_landmarks, r_rad, i_rad, r_noise_pos, r_noise_vel, big_rew_cnst, rew_multiplier_cnst, ep_time_limit, drone_radius, 
+def make_env(scenario_name, dim_c, num_good_agents, num_adversaries, num_landmarks, r_rad, i_rad, r_noise_pos, r_noise_vel, big_rew_cnst, rew_multiplier_cnst, ep_time_step_limit, drone_radius, 
              agent_size, agent_density, agent_initial_mass, agent_accel, agent_max_speed, agent_collide, agent_silent, agent_u_noise, agent_c_noise, agent_u_range, landmark_size, benchmark = False):
 
     '''
@@ -70,7 +70,7 @@ def make_env(scenario_name, dim_c, num_good_agents, num_adversaries, num_landmar
 
     # create world
     world = scenario.make_world(dim_c = dim_c, num_good_agents = num_good_agents, num_adversaries = num_adversaries, num_landmarks = num_landmarks, r_rad = r_rad, i_rad = i_rad, 
-                                r_noise_pos = r_noise_pos, r_noise_vel = r_noise_vel, big_rew_cnst = big_rew_cnst, rew_multiplier_cnst = rew_multiplier_cnst, ep_time_limit = ep_time_limit, 
+                                r_noise_pos = r_noise_pos, r_noise_vel = r_noise_vel, big_rew_cnst = big_rew_cnst, rew_multiplier_cnst = rew_multiplier_cnst, ep_time_step_limit = ep_time_step_limit, 
                                 drone_radius = drone_radius, agent_size = agent_size, agent_density = agent_density, agent_initial_mass = agent_initial_mass, agent_accel = agent_accel, 
                                 agent_max_speed = agent_max_speed, agent_collide = agent_collide, agent_silent = agent_silent, agent_u_noise = agent_u_noise, agent_c_noise = agent_c_noise, 
                                 agent_u_range = agent_u_range, landmark_size = landmark_size)
@@ -218,7 +218,7 @@ def update_agent_goals_softmax_weights(agent_goals_softmax_weights, agent_goal_d
                 agent_goals_softmax_weights[i] += agent_elo / adver_elo 
 
     # obtain scaler 
-    scaler = MinMaxScaler(feature_range = (-1, 1))
+    scaler = MinMaxScaler(feature_range = (-5, 5))
     agent_goals_softmax_weights = np.squeeze(scaler.fit_transform(agent_goals_softmax_weights.reshape(-1, 1)))
 
     # replace nan is any with small value for numerical stability
@@ -282,7 +282,7 @@ def update_adver_goals_softmax_weights(adver_goals_softmax_weights, adver_goal_d
                 adver_goals_softmax_weights[i] += max(agent_elo / adver_elo, adver_elo / agent_elo) 
 
     # obtain scaler 
-    scaler = MinMaxScaler(feature_range = (-1, 1))
+    scaler = MinMaxScaler(feature_range = (-5, 5))
     adver_goals_softmax_weights = np.squeeze(scaler.fit_transform(adver_goals_softmax_weights.reshape(-1, 1))) 
 
     # replace nan is any with small value for numerical stability

@@ -15,20 +15,21 @@ from mappo.mappo import mappo
 from maddpgv2.maddpgv2 import maddpgv2
 from torch.utils.tensorboard import SummaryWriter
 from torch_geometric.data import Data
+from scipy.special import softmax
 from utils.utils import make_env, complete_graph_edge_index, update_noise_exponential_decay, calculate_elo_rating, update_agent_goals_softmax_weights, update_adver_goals_softmax_weights
 																			
 # general options
 AGENT_MODEL 												= "maddpgv2" 
 ADVER_MODEL 												= "maddpgv2"
-AGENT_MODE 													= "train"
-ADVER_MODE 													= "train"
-GENERAL_TRAINING_NAME 										= "agent_" + AGENT_MODEL + "_vs_opp_"  + ADVER_MODEL + "_2_vs_1_1_big"
+AGENT_MODE 													= "test"
+ADVER_MODE 													= "test"
+GENERAL_TRAINING_NAME 										= "agent_" + AGENT_MODEL + "_vs_opp_"  + ADVER_MODEL + "_3_vs_3_1_big_5_sec"
 AGENT_TRAINING_NAME											= GENERAL_TRAINING_NAME + "_agent"
 ADVER_TRAINING_NAME											= GENERAL_TRAINING_NAME + "_adver"
 TENSORBOARD_LOG_DIRECTORY 									= "tensorboard_log" + '/' + GENERAL_TRAINING_NAME
 CSV_LOG_DIRECTORY											= "csv_log" 
-NUMBER_OF_EPISODES 											= 500000
-EPISODE_TIME_LIMIT											= 10
+NUMBER_OF_EPISODES 											= 1000 # 500000
+EPISODE_TIME_STEP_LIMIT										= 20
 RENDER_ENV													= True
 SAVE_MODEL_RATE 											= 100
 SAVE_CSV_LOG												= True
@@ -47,8 +48,8 @@ ADVER_ELO_K  												= 32 * ADVER_TASK_DIFFICULTY_COEFFICIENT
 # env and drone options
 POSITION_DIMENSIONS  										= 2
 COMMUNICATION_DIMENSIONS  									= 1
-NUMBER_OF_AGENT_DRONES 										= 2
-NUMBER_OF_ADVER_DRONES	 									= 1
+NUMBER_OF_AGENT_DRONES 										= 3
+NUMBER_OF_ADVER_DRONES	 									= 3
 NUMBER_OF_LANDMARKS											= 0
 RESTRICTED_RADIUS 											= 0.2
 INTERCEPT_RADIUS 											= 0.7
@@ -69,8 +70,8 @@ AGENT_DRONE_ACCEL											= 4.0
 AGENT_DRONE_MAX_SPEED										= 1.0
 AGENT_DRONE_COLLIDE											= True
 AGENT_DRONE_SILENT											= False												
-AGENT_DRONE_U_NOISE											= 0.5 
-AGENT_DRONE_C_NOISE											= 0.5  
+AGENT_DRONE_U_NOISE											= 1.0
+AGENT_DRONE_C_NOISE											= 1.0  
 AGENT_DRONE_U_RANGE											= 1.0
 
 ADVER_DRONE_RADIUS											= 0.25
@@ -81,8 +82,8 @@ ADVER_DRONE_ACCEL											= 4.0
 ADVER_DRONE_MAX_SPEED										= 1.0
 ADVER_DRONE_COLLIDE											= True
 ADVER_DRONE_SILENT											= False												
-ADVER_DRONE_U_NOISE											= 0.5   
-ADVER_DRONE_C_NOISE											= 0.5  
+ADVER_DRONE_U_NOISE											= 1.0   
+ADVER_DRONE_C_NOISE											= 1.0  
 ADVER_DRONE_U_RANGE											= 1.0
 
 # maddpg options for agent
@@ -240,11 +241,11 @@ AGENT_MADDPGV2_UPDATE_TARGET 								= None
 AGENT_MADDPGV2_GRADIENT_CLIPPING							= True
 AGENT_MADDPGV2_GRADIENT_NORM_CLIP							= 1
 AGENT_MADDPGV2_GOAL 										= EPISODE_TIME_LIMIT
-AGENT_MADDPGV2_NUMBER_OF_GOALS								= 8
+AGENT_MADDPGV2_NUMBER_OF_GOALS								= 4
 AGENT_MADDPGV2_GOAL_DIFFERENCE								= 1
 AGENT_MADDPGV2_GOAL_DISTRIBUTION 							= [AGENT_MADDPGV2_GOAL + i * AGENT_MADDPGV2_GOAL_DIFFERENCE for i in range(- AGENT_MADDPGV2_NUMBER_OF_GOALS + 1, 1)]
 AGENT_MADDPGV2_ADDITIONAL_GOALS								= 4
-AGENT_MADDPGV2_GOAL_STRATEGY								= "goal_distribution"
+AGENT_MADDPGV2_GOAL_STRATEGY								= "goal_distribution_v2"
 
 AGENT_MADDPGV2_ACTOR_INPUT_DIMENSIONS 						= [(1 + NUMBER_OF_LANDMARKS * POSITION_DIMENSIONS + (NUMBER_OF_AGENT_DRONES + NUMBER_OF_ADVER_DRONES) * (POSITION_DIMENSIONS * 2 
 															   + COMMUNICATION_DIMENSIONS)) for i in range(NUMBER_OF_AGENT_DRONES)]
@@ -289,7 +290,7 @@ ADVER_MADDPGV2_NUMBER_OF_GOALS								= 5
 ADVER_MADDPGV2_GOAL_DIFFERENCE								= 0.025
 ADVER_MADDPGV2_GOAL_DISTRIBUTION 							= [ADVER_MADDPGV2_GOAL + i * ADVER_MADDPGV2_GOAL_DIFFERENCE for i in range(ADVER_MADDPGV2_NUMBER_OF_GOALS)]																																	  
 ADVER_MADDPGV2_ADDITIONAL_GOALS								= 0
-ADVER_MADDPGV2_GOAL_STRATEGY								= "goal_distribution"
+ADVER_MADDPGV2_GOAL_STRATEGY								= "goal_distribution_v2"
 
 ADVER_MADDPGV2_ACTOR_INPUT_DIMENSIONS 						= [(1 + NUMBER_OF_LANDMARKS * POSITION_DIMENSIONS + (NUMBER_OF_AGENT_DRONES + NUMBER_OF_ADVER_DRONES) * (POSITION_DIMENSIONS * 2 
 															   + COMMUNICATION_DIMENSIONS)) for i in range(NUMBER_OF_ADVER_DRONES)]
@@ -426,7 +427,7 @@ def train_test():
 		# generate environment during evaluation
 		env = make_env(scenario_name = "zone_def", dim_c = COMMUNICATION_DIMENSIONS, num_good_agents = NUMBER_OF_AGENT_DRONES, num_adversaries = NUMBER_OF_ADVER_DRONES, 
 					   num_landmarks = NUMBER_OF_LANDMARKS, r_rad = RESTRICTED_RADIUS, i_rad = INTERCEPT_RADIUS, r_noise_pos = RADAR_NOISE_POSITION, r_noise_vel = RADAR_NOISE_VELOCITY, 
-					   big_rew_cnst = BIG_REWARD_CONSTANT, rew_multiplier_cnst = REWARD_MULTIPLIER_CONSTANT, ep_time_limit = EPISODE_TIME_LIMIT, 
+					   big_rew_cnst = BIG_REWARD_CONSTANT, rew_multiplier_cnst = REWARD_MULTIPLIER_CONSTANT, ep_time_step_limit = EPISODE_TIME_STEP_LIMIT, 
 					   drone_radius = [AGENT_DRONE_RADIUS, ADVER_DRONE_RADIUS], agent_size = [AGENT_DRONE_SIZE, ADVER_DRONE_SIZE], agent_density = [AGENT_DRONE_DENSITY, ADVER_DRONE_DENSITY], 
 					   agent_initial_mass = [AGENT_DRONE_INITIAL_MASS, ADVER_DRONE_INITIAL_MASS], agent_accel = [AGENT_DRONE_ACCEL, ADVER_DRONE_ACCEL], 
 					   agent_max_speed = [AGENT_DRONE_MAX_SPEED, ADVER_DRONE_MAX_SPEED], agent_collide = [AGENT_DRONE_COLLIDE, ADVER_DRONE_COLLIDE], 
@@ -438,7 +439,7 @@ def train_test():
 		# generate environment during evaluation
 		env = make_env(scenario_name = "zone_def", dim_c = COMMUNICATION_DIMENSIONS, num_good_agents = NUMBER_OF_AGENT_DRONES, num_adversaries = NUMBER_OF_ADVER_DRONES, 
 					   num_landmarks = NUMBER_OF_LANDMARKS, r_rad = RESTRICTED_RADIUS, i_rad = INTERCEPT_RADIUS, r_noise_pos = RADAR_NOISE_POSITION, r_noise_vel = RADAR_NOISE_VELOCITY, 
-					   big_rew_cnst = BIG_REWARD_CONSTANT, rew_multiplier_cnst = REWARD_MULTIPLIER_CONSTANT, ep_time_limit = EPISODE_TIME_LIMIT, 
+					   big_rew_cnst = BIG_REWARD_CONSTANT, rew_multiplier_cnst = REWARD_MULTIPLIER_CONSTANT, ep_time_step_limit = EPISODE_TIME_STEP_LIMIT, 
 					   drone_radius = [AGENT_DRONE_RADIUS, ADVER_DRONE_RADIUS], agent_size = [AGENT_DRONE_SIZE, ADVER_DRONE_SIZE], agent_density = [AGENT_DRONE_DENSITY, ADVER_DRONE_DENSITY], 
 					   agent_initial_mass = [AGENT_DRONE_INITIAL_MASS, ADVER_DRONE_INITIAL_MASS], agent_accel = [AGENT_DRONE_ACCEL, ADVER_DRONE_ACCEL], 
 					   agent_max_speed = [AGENT_DRONE_MAX_SPEED, ADVER_DRONE_MAX_SPEED], agent_collide = [AGENT_DRONE_COLLIDE, ADVER_DRONE_COLLIDE], 
@@ -450,7 +451,7 @@ def train_test():
 		# generate environment during evaluation
 		env = make_env(scenario_name = "zone_def", dim_c = COMMUNICATION_DIMENSIONS, num_good_agents = NUMBER_OF_AGENT_DRONES, num_adversaries = NUMBER_OF_ADVER_DRONES, 
 					   num_landmarks = NUMBER_OF_LANDMARKS, r_rad = RESTRICTED_RADIUS, i_rad = INTERCEPT_RADIUS, r_noise_pos = RADAR_NOISE_POSITION, r_noise_vel = RADAR_NOISE_VELOCITY, 
-					   big_rew_cnst = BIG_REWARD_CONSTANT, rew_multiplier_cnst = REWARD_MULTIPLIER_CONSTANT, ep_time_limit = EPISODE_TIME_LIMIT, 
+					   big_rew_cnst = BIG_REWARD_CONSTANT, rew_multiplier_cnst = REWARD_MULTIPLIER_CONSTANT, ep_time_step_limit = EPISODE_TIME_STEP_LIMIT, 
 					   drone_radius = [AGENT_DRONE_RADIUS, ADVER_DRONE_RADIUS], agent_size = [AGENT_DRONE_SIZE, ADVER_DRONE_SIZE], agent_density = [AGENT_DRONE_DENSITY, ADVER_DRONE_DENSITY], 
 					   agent_initial_mass = [AGENT_DRONE_INITIAL_MASS, ADVER_DRONE_INITIAL_MASS], agent_accel = [AGENT_DRONE_ACCEL, ADVER_DRONE_ACCEL], 
 					   agent_max_speed = [AGENT_DRONE_MAX_SPEED, ADVER_DRONE_MAX_SPEED], agent_collide = [AGENT_DRONE_COLLIDE, ADVER_DRONE_COLLIDE], 
@@ -462,7 +463,7 @@ def train_test():
 		# generate environment during evaluation
 		env = make_env(scenario_name = "zone_def", dim_c = COMMUNICATION_DIMENSIONS, num_good_agents = NUMBER_OF_AGENT_DRONES, num_adversaries = NUMBER_OF_ADVER_DRONES, 
 					   num_landmarks = NUMBER_OF_LANDMARKS, r_rad = RESTRICTED_RADIUS, i_rad = INTERCEPT_RADIUS, r_noise_pos = RADAR_NOISE_POSITION, r_noise_vel = RADAR_NOISE_VELOCITY, 
-					   big_rew_cnst = BIG_REWARD_CONSTANT, rew_multiplier_cnst = REWARD_MULTIPLIER_CONSTANT, ep_time_limit = EPISODE_TIME_LIMIT, 
+					   big_rew_cnst = BIG_REWARD_CONSTANT, rew_multiplier_cnst = REWARD_MULTIPLIER_CONSTANT, ep_time_step_limit = EPISODE_TIME_STEP_LIMIT, 
 					   drone_radius = [AGENT_DRONE_RADIUS, ADVER_DRONE_RADIUS], agent_size = [AGENT_DRONE_SIZE, ADVER_DRONE_SIZE], agent_density = [AGENT_DRONE_DENSITY, ADVER_DRONE_DENSITY], 
 					   agent_initial_mass = [AGENT_DRONE_INITIAL_MASS, ADVER_DRONE_INITIAL_MASS], agent_accel = [AGENT_DRONE_ACCEL, ADVER_DRONE_ACCEL], 
 					   agent_max_speed = [AGENT_DRONE_MAX_SPEED, ADVER_DRONE_MAX_SPEED], agent_collide = [AGENT_DRONE_COLLIDE, ADVER_DRONE_COLLIDE], 
@@ -562,7 +563,7 @@ def train_test():
 		agent_goals_list = []
 
 		# initialise softmax weights for agent goal distribution
-		agent_goals_softmax_weights = np.zeros(len(AGENT_MADDPGV2_GOAL_DISTRIBUTION))
+		agent_goals_softmax_weights = np.zeros(len(AGENT_MADDPGV2_GOAL_DISTRIBUTION), dtype = np.float64)
 
 	# goals based variables for agent maddppv2 
 	if ADVER_MODEL == "maddpgv2":
@@ -571,7 +572,7 @@ def train_test():
 		adver_goals_list = []
 
 		# initialise softmax weights for adversarial goal distribution
-		adver_goals_softmax_weights = np.zeros(len(ADVER_MADDPGV2_GOAL_DISTRIBUTION))
+		adver_goals_softmax_weights = np.zeros(len(ADVER_MADDPGV2_GOAL_DISTRIBUTION), dtype = np.float64)
 
 	# iterate over number of episodes
 	for eps in range(1, NUMBER_OF_EPISODES + 1): 
@@ -608,7 +609,7 @@ def train_test():
 			if AGENT_MODE != "test":
 
 				# obtain probability distribution from agent_goals_softmax_weights
-				prob_dist = np.nan_to_num(np.exp(agent_goals_softmax_weights), nan = 10**-5)/sum(np.nan_to_num(np.exp(agent_goals_softmax_weights), nan = 10**-5))
+				prob_dist = softmax(agent_goals_softmax_weights)
 
 				# sample goal from probability distribution
 				agent_goal = np.random.choice(a = AGENT_MADDPGV2_GOAL_DISTRIBUTION, p = prob_dist)
@@ -637,7 +638,7 @@ def train_test():
 			if ADVER_MODE != "test":
 
 				# obtain probability distribution from adver_goals_softmax_weights
-				prob_dist = np.nan_to_num(np.exp(adver_goals_softmax_weights), nan = 10**-5)/sum(np.nan_to_num(np.exp(adver_goals_softmax_weights), nan = 10**-5))
+				prob_dist = softmax(adver_goals_softmax_weights)
 
 				# sample goal from probability distribution
 				adver_goal = np.random.choice(a = ADVER_MADDPGV2_GOAL_DISTRIBUTION, p = prob_dist)
@@ -657,13 +658,10 @@ def train_test():
 		actor_states = np.array(actor_states)
 		adver_actor_states = np.array(actor_states[:NUMBER_OF_ADVER_DRONES])
 		agent_actor_states = np.array(actor_states[NUMBER_OF_ADVER_DRONES:])
-
-		# set episode start time
-		env.world.ep_start_time = time.time()
-
+		
 		# iterate till episode terminates
 		while is_terminal == 0:
-
+			
 			# check if environment is required to be rendered
 			if RENDER_ENV == True:
 
@@ -733,6 +731,9 @@ def train_test():
 			# update state of the world and obtain information of the updated state
 			actor_states_prime, rewards, terminates_p_terminal_con, benchmark_data = env.step(action_n = adver_actions_list, agent_goal = AGENT_MADDPGV2_GOAL, adver_goal = ADVER_MADDPGV2_GOAL)
 			
+			# update world ep_time_step
+			env.world.ep_time_step += 1
+
 			# obtain numpy array of actor_states_prime, adver_actor_states_prime, agent_actor_states_prime, adver_rewards, agent_rewards
 			actor_states_prime = np.array(actor_states_prime)
 			adver_actor_states_prime = np.array(actor_states_prime[:NUMBER_OF_ADVER_DRONES])
@@ -1599,7 +1600,7 @@ def train_test():
 				if AGENT_MODEL == "maddpgv2":
 
 					# print agent_goal
-					print(f'agent_goal (episode time limit): {agent_goal}')
+					print(f'agent_goal (episode time step limit): {agent_goal}')
 
 				# additional log message of goals for maddpgv2 for adversarial
 				if ADVER_MODEL == "maddpgv2":
@@ -1671,7 +1672,7 @@ def train_test():
 				if AGENT_MODEL == "maddpgv2":
 
 					# print agent_goal
-					print(f'agent_goal (episode time limit): {agent_goal}')
+					print(f'agent_goal (episode time step limit): {agent_goal}')
 
 				# additional log message of goals for maddpgv2 for adversarial
 				if ADVER_MODEL == "maddpgv2":
@@ -1741,7 +1742,7 @@ def train_test():
 					if AGENT_MODEL == "maddpgv2":
 
 						# print agent_goal
-						print(f'agent_goal (episode time limit): {agent_goal}')
+						print(f'agent_goal (episode time step limit): {agent_goal}')
 
 					# additional log message of goals for maddpgv2 for adversarial
 					if ADVER_MODEL == "maddpgv2":
@@ -1808,7 +1809,7 @@ def train_test():
 					if AGENT_MODEL == "maddpgv2":
 
 						# print agent_goal
-						print(f'agent_goal (episode time limit): {agent_goal}')
+						print(f'agent_goal (episode time step limit): {agent_goal}')
 
 					# additional log message of goals for maddpgv2 for adversarial
 					if ADVER_MODEL == "maddpgv2":

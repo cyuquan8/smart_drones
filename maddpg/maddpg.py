@@ -93,12 +93,9 @@ class maddpg:
                 # if mode is not test
                 if mode == 'train':
                     
-                    # check if agent
-                    if is_adversary == False:
-
-                        # create replay buffer
-                        self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_agents, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
-                                                                  actor_input_dims = state_fc_input_dims)
+                    # create replay buffer
+                    self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_agents, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
+                                                              actor_input_dims = state_fc_input_dims)
 
                 # if test mode
                 elif mode == 'test':
@@ -108,12 +105,10 @@ class maddpg:
 
                 elif mode == "load_and_train":
 
-                    # check if agent
-                    if is_adversary == False:
+                    # create replay buffer
+                    self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_agents, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
+                                                              actor_input_dims = state_fc_input_dims)
 
-                        # create replay buffer
-                        self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_agents, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
-                                                                  actor_input_dims = state_fc_input_dims)
                     # load all models
                     self.load_all_models()
 
@@ -163,13 +158,10 @@ class maddpg:
 
                 # if mode is not test
                 if mode == 'train':
-                    
-                    # check if agent
-                    if is_adversary == False:
 
-                        # create replay buffer
-                        self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_opp, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
-                                                                  actor_input_dims = state_fc_input_dims)
+                    # create replay buffer
+                    self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_opp, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
+                                                              actor_input_dims = state_fc_input_dims)
 
                 # if test mode
                 elif mode == 'test':
@@ -179,12 +171,9 @@ class maddpg:
 
                 elif mode == "load_and_train":
 
-                    # check if agent
-                    if is_adversary == False:
-
-                        # create replay buffer
-                        self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_opp, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
-                                                                  actor_input_dims = state_fc_input_dims)
+                    # create replay buffer
+                    self.replay_buffer = maddpg_replay_buffer(mem_size = mem_size, num_agents = num_opp, u_actions_dims = u_action_dims, c_actions_dims = c_action_dims, 
+                                                              actor_input_dims = state_fc_input_dims)
                     # load all models
                     self.load_all_models()    
 

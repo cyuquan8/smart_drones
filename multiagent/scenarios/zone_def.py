@@ -26,8 +26,8 @@ class DroneAgent(Agent):
 # scenario class for zone defense
 class Scenario(BaseScenario):
 
-	def make_world(self, dim_c, num_good_agents, num_adversaries, num_landmarks, r_rad, i_rad, r_noise_pos, r_noise_vel, big_rew_cnst, rew_multiplier_cnst, ep_time_limit, drone_radius, agent_size, 
-				   agent_density, agent_initial_mass, agent_accel, agent_max_speed, agent_collide, agent_silent, agent_u_noise, agent_c_noise, agent_u_range, landmark_size):
+	def make_world(self, dim_c, num_good_agents, num_adversaries, num_landmarks, r_rad, i_rad, r_noise_pos, r_noise_vel, big_rew_cnst, rew_multiplier_cnst, ep_time_step_limit, drone_radius, 
+				   agent_size, agent_density, agent_initial_mass, agent_accel, agent_max_speed, agent_collide, agent_silent, agent_u_noise, agent_c_noise, agent_u_range, landmark_size):
 
 		""" function to generate the world along with attributes of the world """
 
@@ -39,8 +39,8 @@ class Scenario(BaseScenario):
 		# dimension of communication action space
 		world.dim_c = dim_c
 
-		# create episode start time attribute to determine episode length
-		world.ep_start_time = time.time()
+		# create episode start time step attribute to determine episode length
+		world.ep_time_step = 0
 
 		# create attributes for the number of adversaries, good agents
 		world.num_adversaries = num_adversaries
@@ -63,7 +63,7 @@ class Scenario(BaseScenario):
 		self.rew_multiplier_cnst = rew_multiplier_cnst
 
 		# time limit for episode
-		self.ep_time_limit = ep_time_limit
+		self.ep_time_step_limit = ep_time_step_limit
 
 		# add agents
 
@@ -150,6 +150,8 @@ class Scenario(BaseScenario):
 			# reset velocity to zero
 			landmark.state.p_vel = np.zeros(world.dim_p)
 
+		# reset ep_time_step to zero
+		world.ep_time_step = 0
 
 	def benchmark_data(self, agent, world):
 
@@ -280,7 +282,7 @@ class Scenario(BaseScenario):
 				return rew
 
 		# reward good agent for acheiving objective
-		if time.time() - world.ep_start_time >= self.ep_time_limit:
+		if world.ep_time_step >= self.ep_time_step_limit:
 
 			rew += self.big_rew_cnst
 
@@ -354,7 +356,7 @@ class Scenario(BaseScenario):
 				return rew
 
 		# reward good agent for acheiving objective
-		if time.time() - world.ep_start_time >= self.ep_time_limit:
+		if world.ep_time_step >= self.ep_time_step_limit:
 
 			rew -= self.big_rew_cnst
 
@@ -437,10 +439,10 @@ class Scenario(BaseScenario):
 				return rew
 
 		# reward good agent for acheiving goal
-		if time.time() - world.ep_start_time >= goal:
+		if world.ep_time_step >= goal:
 
 			# check if goal is original goal
-			if goal >= self.ep_time_limit:
+			if goal >= self.ep_time_step_limit:
 
 				rew += self.big_rew_cnst
 
@@ -527,7 +529,7 @@ class Scenario(BaseScenario):
 				return rew
 
 		# reward good agent for acheiving objective
-		if time.time() - world.ep_start_time >= self.ep_time_limit:
+		if world.ep_time_step >= self.ep_time_limit:
 
 			rew -= self.big_rew_cnst
 
@@ -587,7 +589,7 @@ class Scenario(BaseScenario):
 			return [True, 1]
 
 		# if episode time exceeds episode time limit, episode terminates with agent drones succeeding in defending the restricted zone
-		if time.time() - world.ep_start_time >= self.ep_time_limit:
+		if world.ep_time_step >= self.ep_time_limit:
 
 			return [True, 2] 
 
@@ -619,7 +621,7 @@ class Scenario(BaseScenario):
 			return [True, 1]
 
 		# if episode time exceeds episode time limit, episode terminates with agent drones succeeding in defending the restricted zone
-		if time.time() - world.ep_start_time >= agent_goal:
+		if world.ep_time_step >= agent_goal:
 
 			return [True, 2] 
 
@@ -791,5 +793,4 @@ class Scenario(BaseScenario):
 						adv_vel.append(other.state.p_vel + vel_noise)
 	
 		# return concenated observation
-		return np.concatenate([[time.time() - world.ep_start_time]] + [agent.state.c] + [agent.state.p_pos] + [agent.state.p_vel] + landmark_pos + good_comms + adv_comms + good_pos + adv_pos + 
-							  good_vel + adv_vel)
+		return np.concatenate([[world.ep_time_step]] + [agent.state.c] + [agent.state.p_pos] + [agent.state.p_vel] + landmark_pos + good_comms + adv_comms + good_pos + adv_pos + good_vel + adv_vel)

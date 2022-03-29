@@ -343,7 +343,7 @@ class maddpgv2_replay_buffer:
                             self.add_goals_replay_buffer_list[add_goals_index].rewards_log[time_step][agent_index] = reward
 
         # check goal strategy
-        elif self.goal_strategy == "goal_distribution":
+        elif self.goal_strategy == "goal_distribution_v1" or self.goal_strategy == "goal_distribution_v2":
 
             # iterate over num_of_add_goals
             for add_goals_index in range(self.num_of_add_goals):
@@ -360,8 +360,16 @@ class maddpgv2_replay_buffer:
                             # if good agent
                             if self.is_adversary == False:
 
-                                # obtain goals that harder than current agent goal
-                                goals_list = [goal for goal in agent_goal_dist if goal >= agent_goal]
+                                # check goal strategy
+                                if self.goal_strategy == "goal_distribution_v1":
+
+                                    goals_list = agent_goal_dist
+
+                                # check goal strategy
+                                elif self.goal_strategy == "goal_distribution_v2":
+
+                                    # obtain goals that harder than current agent goal
+                                    goals_list = [goal for goal in agent_goal_dist if goal >= agent_goal]
 
                                 # sample random goal from goals_list 
                                 goal = np.random.choice(goals_list)
@@ -369,8 +377,16 @@ class maddpgv2_replay_buffer:
                             # if adversarial agent
                             elif self.is_adversary == True:
 
-                                # obtain goals that harder than current adver goal
-                                goals_list = [goal for goal in adver_goal_dist if goal <= adver_goal]
+                                # check goal strategy
+                                if self.goal_strategy == "goal_distribution_v1":
+
+                                    goals_list = adver_goal_dist
+
+                                # check goal strategy
+                                elif self.goal_strategy == "goal_distribution_v2":
+
+                                    # obtain goals that harder than current adver goal
+                                    goals_list = [goal for goal in adver_goal_dist if goal <= adver_goal]
 
                                 # sample random goal from goals_list 
                                 goal = np.random.choice(goals_list)
@@ -391,8 +407,16 @@ class maddpgv2_replay_buffer:
                             # if good agent
                             if self.is_adversary == False:
 
-                                # obtain goals that harder than current agent goal
-                                goals_list = [goal for goal in agent_goal_dist if goal >= agent_goal]
+                                # check goal strategy
+                                if self.goal_strategy == "goal_distribution_v1":
+
+                                    goals_list = agent_goal_dist
+
+                                # check goal strategy
+                                elif self.goal_strategy == "goal_distribution_v2":
+
+                                    # obtain goals that harder than current agent goal
+                                    goals_list = [goal for goal in agent_goal_dist if goal >= agent_goal]
 
                                 # sample random goal from goals_list 
                                 goal = np.random.choice(goals_list)
@@ -400,8 +424,16 @@ class maddpgv2_replay_buffer:
                             # if adversarial agent
                             elif self.is_adversary == True:
 
-                                # obtain goals that harder than current adver goal
-                                goals_list = [goal for goal in adver_goal_dist if goal <= adver_goal]
+                                # check goal strategy
+                                if self.goal_strategy == "goal_distribution_v1":
+
+                                    goals_list = adver_goal_dist
+
+                                # check goal strategy
+                                elif self.goal_strategy == "goal_distribution_v2":
+
+                                    # obtain goals that harder than current adver goal
+                                    goals_list = [goal for goal in adver_goal_dist if goal <= adver_goal]
 
                                 # sample random goal from goals_list 
                                 goal = np.random.choice(goals_list)
@@ -419,8 +451,16 @@ class maddpgv2_replay_buffer:
                             # if good agent
                             if self.is_adversary == False:
 
-                                # obtain goals that harder than current agent goal
-                                goals_list = [goal for goal in agent_goal_dist if goal >= agent_goal]
+                                # check goal strategy
+                                if self.goal_strategy == "goal_distribution_v1":
+
+                                    goals_list = agent_goal_dist
+
+                                # check goal strategy
+                                elif self.goal_strategy == "goal_distribution_v2":
+
+                                    # obtain goals that harder than current agent goal
+                                    goals_list = [goal for goal in agent_goal_dist if goal >= agent_goal]
 
                                 # sample random goal from goals_list 
                                 goal = np.random.choice(goals_list)
@@ -428,8 +468,16 @@ class maddpgv2_replay_buffer:
                             # if adversarial agent
                             elif self.is_adversary == True:
 
-                                # obtain goals that harder than current adver goal
-                                goals_list = [goal for goal in adver_goal_dist if goal <= adver_goal]
+                                # check goal strategy
+                                if self.goal_strategy == "goal_distribution_v1":
+
+                                    goals_list = adver_goal_dist
+
+                                # check goal strategy
+                                elif self.goal_strategy == "goal_distribution_v2":
+
+                                    # obtain goals that harder than current adver goal
+                                    goals_list = [goal for goal in adver_goal_dist if goal <= adver_goal]
 
                                 # sample random goal from goals_list 
                                 goal = np.random.choice(goals_list)

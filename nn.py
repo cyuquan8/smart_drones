@@ -270,7 +270,7 @@ class maddpg_actor_model(nn.Module):
         self.checkpoint_path = None
         
         # if training model
-        if mode != 'test' and mode != 'load_n_train':
+        if mode != 'test' and mode != 'load_and_train':
 
             try:
                 
@@ -354,7 +354,7 @@ class maddpg_critic_model(nn.Module):
         self.checkpoint_path = None
         
         # if training model
-        if mode != 'test' and mode != 'load_n_train':
+        if mode != 'test' and mode != 'load_and_train':
 
             try:
                                 # create directory for saving models if it does not exist
@@ -478,7 +478,7 @@ class mappo_actor_model(nn.Module):
         self.checkpoint_path = None
         
         # if training model
-        if mode != 'test' and mode != 'load_n_train':
+        if mode != 'test' and mode != 'load_and_train':
 
             try:
                 
@@ -584,7 +584,7 @@ class mappo_critic_model(nn.Module):
         self.checkpoint_path = None
         
         # if training model
-        if mode != 'test' and mode != 'load_n_train':
+        if mode != 'test' and mode != 'load_and_train':
 
             try:
                                 # create directory for saving models if it does not exist
@@ -685,7 +685,7 @@ class maddpgv2_actor_model(nn.Module):
         self.checkpoint_path = None
         
         # if training model
-        if mode != 'test' and mode != 'load_n_train':
+        if mode != 'test' and mode != 'load_and_train':
 
             try:
                 
@@ -770,7 +770,7 @@ class maddpgv2_critic_model(nn.Module):
         self.checkpoint_path = None
         
         # if training model
-        if mode != 'test' and mode != 'load_n_train':
+        if mode != 'test' and mode != 'load_and_train':
 
             try:
                                 # create directory for saving models if it does not exist

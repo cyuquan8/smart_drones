@@ -4,7 +4,7 @@
 # ==========================================================================================================================================================
 
 import os
-import shutil
+import shutil	
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -13,11 +13,11 @@ import matplotlib.pyplot as plt
 # postprocessing options
 NUMBER_OF_EPISODES											= 1000	
 CSV_LOG_DIRECTORY											= "csv_log"
-POSTPROCESSING_DIRECTORY_NAME								= "test_maddpgv2_2_big_2_vs_2_plots"
+POSTPROCESSING_DIRECTORY_NAME								= "test_maddpgv2_3_vs_3_1_big_5_seconds_plots"
 LEGEND_OUT													= True
-TRAINING_LIST												= [[["maddpgv2", "maddpgv2"], [2, 2], ["2_big"], ["test", "test"]]]
-# TRAINING_LIST												= [[["maddpg", "maddpg"], [1, 1], ["1"], ["test", "test"]], [["mappo", "mappo"], [1, 1], ["1"], ["test", "test"]], 
-# 															   [["maddpgv2", "maddpgv2"], [1, 1], ["1"], ["test", "test"]]]
+TRAINING_LIST												= [[["maddpgv2", "maddpgv2"], [3, 3], ["1_big_5_sec"], ["test", "test"]]]
+# TRAINING_LIST												= [[["maddpg", "maddpg"], [1, 1], ["1_big_5_sec"], ["test", "test"]], [["mappo", "mappo"], [1, 1], ["1_big_5_sec"], ["test", "test"]], 
+# 															   [["maddpgv2", "maddpgv2"], [1, 1], ["1_big_5_sec"], ["test", "test"]]]
 
 def post_process(number_of_episodes, csv_log_directory, postprocessing_directory_name, training_list):
 

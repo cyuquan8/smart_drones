@@ -415,12 +415,12 @@ class maddpgv2:
     
     def load_all_models(self):
       
-      """ load weights for all models """
-      
-      print("loading model!")
-      
-      # iterate over num_agents
-      for agent in self.maddpgv2_agents_list:
-        
-          # load each model
-          agent.load_models()
+        """ load weights for all models """
+
+        print("loading model!")
+
+        # iterate over num_agents
+        for agent in self.maddpgv2_agents_list:
+
+            # load each model
+            agent.load_models()
