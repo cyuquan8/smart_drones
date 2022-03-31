@@ -249,11 +249,11 @@ class nn_layers(nn.Module):
             
         return x 
 
-class maddpg_actor_model(nn.Module):
+class maddpg_mlp_actor_model(nn.Module):
     
     """ class to build model for MADDPG """
     
-    def __init__(self, model, model_name, mode, training_name, learning_rate, num_agents, num_opp, dropout_p, fc_input_dims, fc_output_dims, tanh_actions_dims, sig_actions_dims):
+    def __init__(self, model, model_name, mode, scenario_name, training_name, learning_rate, num_agents, num_opp, dropout_p, fc_input_dims, fc_output_dims, tanh_actions_dims, sig_actions_dims):
         
         """ class constructor for attributes for the actor model """
         
@@ -275,16 +275,16 @@ class maddpg_actor_model(nn.Module):
             try:
                 
                 # create directory for saving models if it does not exist
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
                 
             except:
                 
                 # remove existing directory and create new directory
-                shutil.rmtree("saved_models/" + training_name + "_" + "best_models/")
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                shutil.rmtree("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
 
         # checkpoint directory
-        self.checkpoint_dir = "saved_models/" + training_name + "_" + "best_models/"
+        self.checkpoint_dir = "saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/"
         
         # learning rate
         self.learning_rate = learning_rate
@@ -332,11 +332,11 @@ class maddpg_actor_model(nn.Module):
         
         return tanh_actions, sig_actions
 
-class maddpg_critic_model(nn.Module):
+class maddpg_gnn_critic_model(nn.Module):
     
     """ class to build model for MADDPG """
     
-    def __init__(self, model, model_name, mode, training_name, learning_rate, num_agents, num_opp, num_heads, dropout_p, bool_concat, gnn_input_dims, gnn_output_dims, gmt_hidden_dims, 
+    def __init__(self, model, model_name, mode, scenario_name, training_name, learning_rate, num_agents, num_opp, num_heads, dropout_p, bool_concat, gnn_input_dims, gnn_output_dims, gmt_hidden_dims, 
                  gmt_output_dims, u_actions_fc_input_dims, u_actions_fc_output_dims, c_actions_fc_input_dims, c_actions_fc_output_dims, concat_fc_output_dims):
         
         """ class constructor for attributes for the model """
@@ -358,16 +358,16 @@ class maddpg_critic_model(nn.Module):
 
             try:
                                 # create directory for saving models if it does not exist
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
                 
             except:
                 
                 # remove existing directory and create new directory
-                shutil.rmtree("saved_models/" + training_name + "_" + "best_models/")
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                shutil.rmtree("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
 
         # checkpoint directory
-        self.checkpoint_dir = "saved_models/" + training_name + "_" + "best_models/"
+        self.checkpoint_dir = "saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/"
         
         # learning rate
         self.learning_rate = learning_rate
@@ -456,11 +456,11 @@ class maddpg_critic_model(nn.Module):
         
         return q
 
-class mappo_actor_model(nn.Module):
+class mappo_mlp_actor_model(nn.Module):
     
     """ class to build model for MAPPO """
     
-    def __init__(self, model, model_name, mode, training_name, learning_rate, num_agents, num_opp, u_range, u_noise, c_noise, is_adversary, dropout_p, fc_input_dims, fc_output_dims, 
+    def __init__(self, model, model_name, mode, scenario_name, training_name, learning_rate, num_agents, num_opp, u_range, u_noise, c_noise, is_adversary, dropout_p, fc_input_dims, fc_output_dims, 
                  tanh_actions_dims, sig_actions_dims):
         
         """ class constructor for attributes for the actor model """
@@ -483,16 +483,16 @@ class mappo_actor_model(nn.Module):
             try:
                 
                 # create directory for saving models if it does not exist
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
                 
             except:
                 
                 # remove existing directory and create new directory
-                shutil.rmtree("saved_models/" + training_name + "_" + "best_models/")
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                shutil.rmtree("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
 
         # checkpoint directory
-        self.checkpoint_dir = "saved_models/" + training_name + "_" + "best_models/"
+        self.checkpoint_dir = "saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/"
         
         # learning rate
         self.learning_rate = learning_rate
@@ -562,11 +562,11 @@ class mappo_actor_model(nn.Module):
 
         return tanh_actions_norm_dist, sig_actions_norm_dist 
 
-class mappo_critic_model(nn.Module):
+class mappo_gnn_critic_model(nn.Module):
     
     """ class to build model for MAPPO """
     
-    def __init__(self, model, model_name, mode, training_name, learning_rate, num_agents, num_opp, num_heads, dropout_p, bool_concat, gnn_input_dims, gnn_output_dims, gmt_hidden_dims, 
+    def __init__(self, model, model_name, mode, scenario_name, training_name, learning_rate, num_agents, num_opp, num_heads, dropout_p, bool_concat, gnn_input_dims, gnn_output_dims, gmt_hidden_dims, 
                  gmt_output_dims, fc_output_dims):
         
         """ class constructor for attributes for the model """
@@ -588,16 +588,16 @@ class mappo_critic_model(nn.Module):
 
             try:
                                 # create directory for saving models if it does not exist
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
                 
             except:
                 
                 # remove existing directory and create new directory
-                shutil.rmtree("saved_models/" + training_name + "_" + "best_models/")
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                shutil.rmtree("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
 
         # checkpoint directory
-        self.checkpoint_dir = "saved_models/" + training_name + "_" + "best_models/"
+        self.checkpoint_dir = "saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/"
         
         # learning rate
         self.learning_rate = learning_rate
@@ -664,11 +664,11 @@ class mappo_critic_model(nn.Module):
         
         return v
 
-class maddpgv2_actor_model(nn.Module):
+class maddpgv2_mlp_actor_model(nn.Module):
     
     """ class to build model for MADDPGv2 """
     
-    def __init__(self, model, model_name, mode, training_name, learning_rate, num_agents, num_opp, dropout_p, fc_input_dims, fc_output_dims, tanh_actions_dims, sig_actions_dims):
+    def __init__(self, model, model_name, mode, scenario_name, training_name, learning_rate, num_agents, num_opp, dropout_p, fc_input_dims, fc_output_dims, tanh_actions_dims, sig_actions_dims):
         
         """ class constructor for attributes for the actor model """
         
@@ -690,16 +690,16 @@ class maddpgv2_actor_model(nn.Module):
             try:
                 
                 # create directory for saving models if it does not exist
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
                 
             except:
                 
                 # remove existing directory and create new directory
-                shutil.rmtree("saved_models/" + training_name + "_" + "best_models/")
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                shutil.rmtree("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
 
         # checkpoint directory
-        self.checkpoint_dir = "saved_models/" + training_name + "_" + "best_models/"
+        self.checkpoint_dir = "saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/"
         
         # learning rate
         self.learning_rate = learning_rate
@@ -747,11 +747,11 @@ class maddpgv2_actor_model(nn.Module):
         
         return tanh_actions, sig_actions
 
-class maddpgv2_critic_model(nn.Module):
+class maddpgv2_gnn_critic_model(nn.Module):
     
     """ class to build model for MADDPGv2 """
     
-    def __init__(self, model, model_name, mode, training_name, learning_rate, num_agents, num_opp, num_heads, dropout_p, bool_concat, gnn_input_dims, gnn_output_dims, gmt_hidden_dims, 
+    def __init__(self, model, model_name, mode, scenario_name, training_name, learning_rate, num_agents, num_opp, num_heads, dropout_p, bool_concat, gnn_input_dims, gnn_output_dims, gmt_hidden_dims, 
                  gmt_output_dims, u_actions_fc_input_dims, u_actions_fc_output_dims, c_actions_fc_input_dims, c_actions_fc_output_dims, goal_fc_input_dims, goal_fc_output_dims, 
                  concat_fc_output_dims):
         
@@ -774,16 +774,16 @@ class maddpgv2_critic_model(nn.Module):
 
             try:
                                 # create directory for saving models if it does not exist
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
                 
             except:
                 
                 # remove existing directory and create new directory
-                shutil.rmtree("saved_models/" + training_name + "_" + "best_models/")
-                os.mkdir("saved_models/" + training_name + "_" + "best_models/")
+                shutil.rmtree("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
+                os.mkdir("saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/")
 
         # checkpoint directory
-        self.checkpoint_dir = "saved_models/" + training_name + "_" + "best_models/"
+        self.checkpoint_dir = "saved_models/" + scenario_name + "/" + training_name + "_" + "best_models/"
         
         # learning rate
         self.learning_rate = learning_rate

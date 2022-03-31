@@ -190,7 +190,7 @@ class MultiAgentEnv(gym.Env):
                 agent.action.c = action[0]
             action = action[1:]
         # make sure we used all elements of action
-        assert len(action) == 0
+        # assert len(action) == 0
 
     # reset rendering assets
     def _reset_render(self):

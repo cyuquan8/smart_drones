@@ -8,6 +8,157 @@ import time
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
+class gnn_goal_replay_buffer:
+    
+    def __init__(self, mem_size, num_agents, u_actions_dims, c_actions_dims, actor_input_dims, goal_dims):
+        
+        """ class constructor that initialises memory states attributes """
+        
+        # bound for memory log
+        self.mem_size = mem_size
+        
+        # counter for memory logged
+        self.mem_counter = 0 
+        
+        # track start and end index (non-inclusive) of latest episode
+        self.ep_start_index = 0
+        self.ep_end_index = 0
+
+        # boolean to track if latest logged experience tuple is terminal
+        self.is_ep_terminal = False
+
+        # number of agents
+        self.num_agents = num_agents
+        
+        # dimension of goal of an agent
+        self.goal_dims = goal_dims
+
+        # dimensions of action for motor and communications
+        self.u_action_dims = u_actions_dims
+        self.c_action_dims = c_actions_dims
+
+        # dimensions of action space
+        self.actions_dims = self.u_action_dims + self.c_action_dims
+        
+        # reward_log is list of reward from num_agents of actors
+        # terminal_log indicates if episode is terminated
+        self.rewards_log = np.zeros((self.mem_size, self.num_agents)) 
+        self.terminal_log = np.zeros((self.mem_size, self.num_agents), dtype = bool)
+        
+        # list to store num_agents of each actor log of state, state_prime, actions and goals 
+        self.actor_state_log_list = []
+        self.actor_state_prime_log_list = []
+        self.actor_u_action_log_list = []
+        self.actor_c_action_log_list = []
+        self.actor_goals_log_list = []
+
+        # list to store graph data representation of critic state, state prime 
+        self.critic_state_log_list = [0 for i in range(self.mem_size)]
+        self.critic_state_prime_log_list = [0 for i in range(self.mem_size)]
+
+        # list to store goals of agents
+        self.critic_goals_log_list = np.zeros((self.mem_size, self.goal_dims * self.num_agents)) 
+        
+        # iterate over num_agents
+        for actor_index in range(self.num_agents):
+            
+            # append each actor log to list
+            # actor_state and actor_state_prime are local observations of environment by each actor
+            self.actor_state_log_list.append(np.zeros((self.mem_size, actor_input_dims[actor_index])))
+            self.actor_state_prime_log_list.append(np.zeros((self.mem_size, actor_input_dims[actor_index])))
+            self.actor_u_action_log_list.append(np.zeros((self.mem_size, u_actions_dims)))
+            self.actor_c_action_log_list.append(np.zeros((self.mem_size, c_actions_dims)))
+            self.actor_goals_log_list.append(np.zeros((self.mem_size, self.goal_dims)))            
+    
+    def log(self, actor_state, actor_state_prime, actor_goals, critic_state, critic_state_prime, critic_goals, u_action, c_action, rewards, is_done):
+        
+        """ function to log memory """
+        
+        # index for logging. based on first in first out
+        index = self.mem_counter % self.mem_size
+        
+        # iterate over num_agents
+        for actor_index in range(self.num_agents):
+            
+            # log actor_state, actor_state_prime, motor and communication action and goal for each actor
+            self.actor_state_log_list[actor_index][index] = actor_state[actor_index]
+            self.actor_state_prime_log_list[actor_index][index] = actor_state_prime[actor_index]
+            self.actor_u_action_log_list[actor_index][index] = u_action[actor_index]
+            self.actor_c_action_log_list[actor_index][index] = c_action[actor_index]
+            self.actor_goals_log_list[actor_index][index] = actor_goals[actor_index]
+
+        # log critic_fc_state, critic_fc_state_prime, rewards and terminal flag
+        self.critic_state_log_list[index] = critic_state
+        self.critic_state_prime_log_list[index] = critic_state_prime
+        self.critic_goals_log_list[index] = critic_goals
+        self.rewards_log[index] = rewards
+        self.terminal_log[index] = is_done
+        
+        # increment counter
+        self.mem_counter += 1
+        self.ep_end_index = (self.ep_end_index + 1) % self.mem_size
+
+        # check if logged episode is terminal
+        if np.any(is_done) == True:
+
+            # update is_ep_terminal
+            self.is_ep_terminal = True
+
+        else: 
+
+            # update is_ep_terminal
+            self.is_ep_terminal = False
+
+        # calculate ep_start_index
+        if np.any(self.terminal_log[index - 1]) == True:
+
+            self.ep_start_index = index
+    
+    def sample_log(self, batch_size, rng = np.random.default_rng(69)):
+        
+        """ function to randomly sample a batch of memory """
+        
+        # select amongst memory logs that is filled
+        max_mem = min(self.mem_counter, self.mem_size)
+        
+        # randomly select memory from logs
+        batch = rng.choice(max_mem, batch_size, replace = False)
+        
+        # initialise list for actor_state, actor_state_prime, actions, critic_state, critic_state_prime, critic_goals
+        actor_state_log_list = []
+        actor_state_prime_log_list = []
+        actor_u_action_log_list = []
+        actor_c_action_log_list = []
+        actor_goals_log_list = []
+        critic_state_log_list = []
+        critic_state_prime_log_list = []
+        critic_goals_log_list = []
+
+        # iterate over num_agents
+        for actor_index in range(self.num_agents):
+            
+            # obtain corresponding actor_state, actor_state_prime and actions
+            actor_state_log_list.append(self.actor_state_log_list[actor_index][batch])
+            actor_state_prime_log_list.append(self.actor_state_prime_log_list[actor_index][batch])
+            actor_u_action_log_list.append(self.actor_u_action_log_list[actor_index][batch])
+            actor_c_action_log_list.append(self.actor_c_action_log_list[actor_index][batch])
+            actor_goals_log_list.append(self.actor_goals_log_list[actor_index][batch])
+        
+        # obtain corresponding rewards, terminal flag
+        rewards_log = self.rewards_log[batch]
+        terminal_log = self.terminal_log[batch]
+        critic_goals_log_list = self.critic_goals_log_list[batch]
+
+        # iterate over batch for gnn data in critic state
+        for index in batch:
+
+            # append relevant state, 
+            critic_state_log_list.append(self.critic_state_log_list[index]) 
+            critic_state_prime_log_list.append(self.critic_state_prime_log_list[index])
+        
+        return actor_state_log_list, actor_state_prime_log_list, actor_u_action_log_list, actor_c_action_log_list, actor_goals_log_list, critic_state_log_list, critic_state_prime_log_list, \
+               critic_goals_log_list, rewards_log, terminal_log
+
 def degree_to_radians(angle_in_degrees):
 
     """ function to convert angle in degrees to radians """
@@ -68,23 +219,26 @@ def make_env(scenario_name, dim_c, num_good_agents, num_adversaries, num_landmar
     # load scenario from script
     scenario = scenarios.load(scenario_name + ".py").Scenario()
 
-    # create world
-    world = scenario.make_world(dim_c = dim_c, num_good_agents = num_good_agents, num_adversaries = num_adversaries, num_landmarks = num_landmarks, r_rad = r_rad, i_rad = i_rad, 
-                                r_noise_pos = r_noise_pos, r_noise_vel = r_noise_vel, big_rew_cnst = big_rew_cnst, rew_multiplier_cnst = rew_multiplier_cnst, ep_time_step_limit = ep_time_step_limit, 
-                                drone_radius = drone_radius, agent_size = agent_size, agent_density = agent_density, agent_initial_mass = agent_initial_mass, agent_accel = agent_accel, 
-                                agent_max_speed = agent_max_speed, agent_collide = agent_collide, agent_silent = agent_silent, agent_u_noise = agent_u_noise, agent_c_noise = agent_c_noise, 
-                                agent_u_range = agent_u_range, landmark_size = landmark_size)
+    # for zone_def scenario
+    if scenario_name == "zone_def_push" or scenario_name == "zone_def_tag":
 
-    # create multiagent environment
-    if benchmark:  
+        # create world
+        world = scenario.make_world(dim_c = dim_c, num_good_agents = num_good_agents, num_adversaries = num_adversaries, num_landmarks = num_landmarks, r_rad = r_rad, i_rad = i_rad, 
+                                    r_noise_pos = r_noise_pos, r_noise_vel = r_noise_vel, big_rew_cnst = big_rew_cnst, rew_multiplier_cnst = rew_multiplier_cnst, 
+                                    ep_time_step_limit = ep_time_step_limit, drone_radius = drone_radius, agent_size = agent_size, agent_density = agent_density, 
+                                    agent_initial_mass = agent_initial_mass, agent_accel = agent_accel, agent_max_speed = agent_max_speed, agent_collide = agent_collide, agent_silent = agent_silent, 
+                                    agent_u_noise = agent_u_noise, agent_c_noise = agent_c_noise, agent_u_range = agent_u_range, landmark_size = landmark_size)
 
-        env = MultiAgentGoalEnv(world = world, reset_callback = scenario.reset_world, reward_callback = scenario.reward_goal, observation_callback = scenario.observation, 
-                                info_callback = scenario.benchmark_data, done_callback = scenario.is_terminal_goal)
+        # create multiagent environment
+        if benchmark:  
 
-    else:
+            env = MultiAgentGoalEnv(world = world, reset_callback = scenario.reset_world, reward_callback = scenario.reward_goal, observation_callback = scenario.observation, 
+                                    info_callback = scenario.benchmark_data, done_callback = scenario.is_terminal_goal)
 
-        env = MultiAgentGoalEnv(world = world, reset_callback = scenario.reset_world, reward_callback = scenario.reward_goal, observation_callback = scenario.observation, 
-                                done_callback = scenario.is_terminal_goal)
+        else:
+
+            env = MultiAgentGoalEnv(world = world, reset_callback = scenario.reset_world, reward_callback = scenario.reward_goal, observation_callback = scenario.observation, 
+                                    done_callback = scenario.is_terminal_goal)
 
     return env
 
