@@ -722,13 +722,15 @@ class Scenario(BaseScenario):
 				# landmark position is unknown and filled with zeros if not within agent's drone radius
 				landmark_pos.append(np.array([0, 0]))
 
-		# empty list for comms, position and veloctiy of good and adverserial agents other than the agent itself
+		# empty list for comms, position, veloctiy and disabled status of good and adverserial agents other than the agent itself
 		good_comms = []
 		good_pos = []
 		good_vel = []
+		good_status = []
 		adv_comms = []
 		adv_pos = []
 		adv_vel = []
+		adv_status = []
 
 		# iterate over all agents
 		for other in world.agents:
@@ -747,6 +749,9 @@ class Scenario(BaseScenario):
 
 					# append communication of agent in current iteration
 					good_comms.append(other.state.c)
+
+					# append status of good agent
+					good_status.append(np.array(1).reshape(1) if other.movable == True else np.array(0).reshape(1))
 
 					# check if agent in current iteration is within agent's drone radius
 					if within_drone_radius(agent, other):
@@ -775,6 +780,9 @@ class Scenario(BaseScenario):
 
 					# append communication of agent in current iteration with zeros given that agent is good
 					adv_comms.append(np.zeros(world.dim_c))
+
+					# append status of good agent
+					adv_status.append(np.array(1).reshape(1) if other.movable == True else np.array(0).reshape(1))
 
 					# check if agent in current iteration is within agent's drone radius
 					if within_drone_radius(agent, other):
@@ -807,6 +815,9 @@ class Scenario(BaseScenario):
 					# append communication of agent in current iteration with zeros given that agent is adversarial
 					good_comms.append(np.zeros(world.dim_c))
 
+					# append status of good agent
+					good_status.append(np.array(1).reshape(1) if other.movable == True else np.array(0).reshape(1))
+
 					# check if agent in current iteration is within agent's drone radius
 					if within_drone_radius(agent, other):
 
@@ -831,6 +842,9 @@ class Scenario(BaseScenario):
 					# append communication of agent in current iteration
 					adv_comms.append(other.state.c)
 
+					# append status of good agent
+					adv_status.append(np.array(1).reshape(1) if other.movable == True else np.array(0).reshape(1))
+
 					# check if agent in current iteration is within agent's drone radius
 					if within_drone_radius(agent, other):
 
@@ -852,7 +866,7 @@ class Scenario(BaseScenario):
 
 						# append velocity of agent in current iteration with radar noise if within agent's drone radius 
 						adv_vel.append(other.state.p_vel + vel_noise)
-		
+
 		# return concenated observation
-		return np.concatenate([[world.ep_time_step]] + [agent.state.c] + [agent.state.p_pos] + [agent.state.p_vel] + landmark_pos + good_comms + adv_comms + good_pos + adv_pos + good_vel + adv_vel + \
-							  [[1 if adver.movable == True else 0 for adver in self.adversaries(world)]])
+		return np.concatenate([[world.ep_time_step]] + [agent.state.c] + [agent.state.p_pos] + [agent.state.p_vel] + [[1 if agent.movable == True else 0]] + landmark_pos + good_comms + adv_comms + \
+							  good_pos + adv_pos + good_vel + adv_vel + good_status + adv_status)

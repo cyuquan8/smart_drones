@@ -11,8 +11,9 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # postprocessing options
+SCENARIO_NAME												= "zone_def_tag" 
 NUMBER_OF_EPISODES											= 1000	
-CSV_LOG_DIRECTORY											= "csv_log"
+CSV_LOG_DIRECTORY											= "csv_log" + '/' + SCENARIO_NAME
 POSTPROCESSING_DIRECTORY_NAME								= "test_maddpgv2_3_vs_3_1_big_5_seconds_plots"
 LEGEND_OUT													= True
 TRAINING_LIST												= [[["maddpgv2", "maddpgv2"], [3, 3], ["1_big_5_sec"], ["test", "test"]]]
